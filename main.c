@@ -3,23 +3,25 @@
 #include <unistd.h>
 #include <errno.h>
 #include <pthread.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <sys/socket.h>
 
-int main() {
-	int fd=0, sock=0;
+int main()
+{
+	int fd, sock;
 
-	if (fd=open("error.log", O_CREAT| O_WRONLY, 0666)==-1)
-	{	
-		perror("Error in opening error.log);
+	if ((fd = open("error.log", O_CREAT | O_WRONLY, 0666)) == -1) {
+		perror("Error in opening error.log");
 		return (EXIT_FAILURE);
 	}
-	if (dup2(fd, STDERR_FILENO)==-1)
-	{
-		perror("Error in opening error.log);
+	if (dup2(fd, STDERR_FILENO) == -1) {
+		perror("Error in opening error.log");
 		return (EXIT_FAILURE);
 	}
-	
-	if ((sock=socket(AF_INET, SOCK_STREAM, 0))==-1)
-	{
+
+	if ((sock = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
 		perror("Error in socket");
 		return (EXIT_FAILURE);
 	}
