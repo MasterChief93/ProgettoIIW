@@ -21,9 +21,16 @@ int main()
 		return (EXIT_FAILURE);
 	}
 
-	if ((sock = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
+	if (close(fd)==-1){
+		perror("Error in closing error.log");
+		return (EXIT_FAILURE);
+	}
+
+	if ((sock = socket(AF_INET, SOCK_STREAM, 0)) <0) {
 		perror("Error in socket");
 		return (EXIT_FAILURE);
 	}
+
+
 	return 0;
 }
