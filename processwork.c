@@ -15,6 +15,14 @@
 #define MAX_THREAD_NUM 20          //Massimo numero di Thread per processo
 #define MAX_ERROR_ALLOWED 5        //Masimo numero di errori ignorabili
 
+struct thread_struct {
+	int conn_sd; //socket di connessione
+};
+
+void *thread_work(void *arg) {
+	(void) arg;
+	return 0;
+}
 
 int Process_Work(int lsock)
 {
@@ -22,6 +30,15 @@ int Process_Work(int lsock)
 	socklen_t client_len;
 	struct sockaddr_in clientaddr;
 	pthread_t tid[MAX_THREAD_NUM];
+	struct thread_struct *tss[MAX_THREAD_NUM];
+	
+	for(i = 0; i < MAX_THREAD_NUM; i++) {
+		if (pthread_create(&tid[i],NULL,thread_work,tss[i]) < 0) {
+			perror("pthread_create");
+			exit(EXIT_FAILURE);
+		}
+	}
+	
 	
 	if (memset((void*)&clientaddr, 0, sizeof(clientaddr)) == NULL) {
 		perror("memset");
@@ -39,11 +56,13 @@ int Process_Work(int lsock)
 			error+=1;
 			if (error <= MAX_ERROR_ALLOWED) continue;                     //Prova ad ignorare l'errore
 			 else Process_Work(lsock);                                   //Troppi fallimenti, ricomincia
-			
 		}
 		
+		tss[i].conn_sd = connsd;
+		i++
 		//Thread_work                 //Da aggiungere
-		
+		if 
+	}
 	i=(i+1)%MAX_THREAD_NUM;
 	}
 }

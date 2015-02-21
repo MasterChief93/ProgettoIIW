@@ -11,6 +11,7 @@
 #include <arpa/inet.h>
 #include "processwork.h"     //Nostro
 #include <string.h>
+#include <sys/wait.h>
 
 #define SERV_PORT 5042
 #define MAX_PROLE_NUM 10    //Massimo numero processi concorrenti (oltre al padre). Si suppone che ogni processo si divida in thread.
@@ -74,6 +75,23 @@ int main()
 				continue;
 		}
 	}
+	//int status; volendo si può aggiungere lo stato per un reseconto più preciso
+	
+	for (;;) {
+		if ((wait(NULL)) == 0) {
+			switch (fork())
+			{
+				case -1:
+					perror("Error in fork");
+					exit(EXIT_FAILURE);
+				case 0:
+					Process_Work(sock);
+				default:
+					continue;
+			}
+		}
+	}
+			
 
 
 	return 0;
