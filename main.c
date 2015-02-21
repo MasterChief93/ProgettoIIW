@@ -9,7 +9,8 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-#include <processwork.h>     //Nostro
+#include "processwork.h"     //Nostro
+#include <string.h>
 
 #define SERV_PORT 5042
 #define MAX_PROLE_NUM 10    //Massimo numero processi concorrenti (oltre al padre). Si suppone che ogni processo si divida in thread.
@@ -39,13 +40,13 @@ int main()
 		return (EXIT_FAILURE);
 	}
 
-	if (memset((void*)&servaddr, 0, sizeof(servaddr))==-1)
+	if (memset((void*)&servaddr, 0, sizeof(servaddr))==NULL)
 	{
 		perror("Error in memset");
 		return (EXIT_FAILURE);
 	}
 	servaddr.sin_family=AF_INET;
-	servaddr.sin_addr.s_addr(htonl(INADDR_ANY));
+	servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
 	servaddr.sin_port=htons(SERV_PORT);
 
 	if(bind(sock, (struct sockaddr*)&servaddr, sizeof(servaddr))<0)
@@ -54,7 +55,7 @@ int main()
 		return (EXIT_FAILURE);
 	}
 	
-	if (listen (sock, SOMAXCONN)<0)   //SOMAXCONN=acccetta connessioni finchè il SO non getta la spugna
+	if (listen(sock, SOMAXCONN)<0)   //SOMAXCONN = acccetta connessioni finchè il SO non getta la spugna
 	{
 		perror("Error in listen");
 		return (EXIT_FAILURE);
