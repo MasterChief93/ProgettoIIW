@@ -10,9 +10,10 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <string.h>   //per memset
+#include "processwork.h"     //Nostro
 
-
-#define MAX_THREAD_NUM 20          //Massimo numero di Thread per processo
+#define MIN_THREAD_NUM 10        //Numero di Thread nel pool iniziale di ogni processo
+#define MAX_THREAD_NUM 50          //Massimo numero di Thread per processo
 #define MAX_ERROR_ALLOWED 5        //Masimo numero di errori ignorabili
 
 struct thread_struct {
@@ -26,19 +27,21 @@ void *thread_work(void *arg) {
 
 int Process_Work(int lsock)
 {
-	int i, error=0, connsd;
+	int i, error=0, connsd, thread_num;
 	socklen_t client_len;
 	struct sockaddr_in clientaddr;
-	pthread_t tid[MAX_THREAD_NUM];
-	struct thread_struct *tss[MAX_THREAD_NUM];
+	pthread_t tid[MIN_THREAD_NUM];
+	struct thread_struct *tss[MIN_THREAD_NUM];
 	
-	for(i = 0; i < MAX_THREAD_NUM; i++) {
+	errno=0;
+	for(i = 0; i < MIN_THREAD_NUM; i++) {
+		tss[i]->conn_sd=-1;
 		if (pthread_create(&tid[i],NULL,thread_work,tss[i]) < 0) {
 			perror("pthread_create");
 			exit(EXIT_FAILURE);
 		}
 	}
-	
+	thread_num=MIN_THREAD_NUM;
 	
 	if (memset((void*)&clientaddr, 0, sizeof(clientaddr)) == NULL) {
 		perror("memset");
@@ -59,10 +62,7 @@ int Process_Work(int lsock)
 		}
 		
 		tss[i].conn_sd = connsd;
-		i++
 		//Thread_work                 //Da aggiungere
-		if 
-	}
-	i=(i+1)%MAX_THREAD_NUM;
+	i=(i+1)%thread_num;
 	}
 }
