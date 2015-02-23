@@ -59,27 +59,34 @@ int Process_Work(int lsock)
 	}
 		
 	i=0;
+	client_len = sizeof(clientaddr);                                    //Esiste la possibilità (remota) che vada all'interno del while
 	while (1==1)
 	{
-		//semaforo                                                      //Andrà implementato un semaforo tra i processi per evitare l'effetto "Thundering Herd"
-		client_len = sizeof(clientaddr);
-		if ((connsd = accept(lsock, (struct sockaddr*)&clientaddr,&client_len))<0)
+		while (1==1)
 		{
-			perror("Error in accept");
-			error+=1;
-			if (error <= MAX_ERROR_ALLOWED) continue;                     //Prova ad ignorare l'errore
-			 else Process_Work(lsock);                                   //Troppi fallimenti, ricomincia
+			//prendi semaforo                                                      //Andrà implementato un semaforo tra i processi per evitare l'effetto "Thundering Herd"
+			if ((connsd = accept(lsock, (struct sockaddr*)&clientaddr,&client_len))<0)
+			{
+				perror("Error in accept");
+				error+=1;
+				if (error <= MAX_ERROR_ALLOWED) continue;                    //Prova ad ignorare l'errore
+				 else Process_Work(lsock);                                   //Troppi fallimenti, ricomincia
+			}
+			//rilascia semaforo
 		}
-		if (tss[i]->conn_sd==-1){
-			tss[i]->conn_sd = connsd;
-			round=0
-		}
-		else round++
-		if (round=thread_num)
+		while (1=1)
 		{
-			//Add Thread(THREAD_INCREASE)                                //Fatto un giro completo senza trovare Thread liberi: aumenta il pool
+			if (tss[i]->conn_sd==-1){
+				tss[i]->conn_sd = connsd;
+				round=0
+			}
+			else round++
+			if (round=(thread_num-(int)(0.1*thread_num)))                    //Se il 90% dei thread sono impegnati, incrementa il pool
+			{
+				//Add Thread(THREAD_INCREASE)                                //Realloc per tid e thread_struct. Creare thread. Aggiornare thread_num
+			}
+			
+			i=(i+1)%thread_num;
 		}
-		
-		i=(i+1)%thread_num;
 	}
 }
