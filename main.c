@@ -18,15 +18,17 @@
 
 int main()
 {
-	int fd, sock, i;
+	int fde,fdc sock, i;
 	struct sockaddr_in servaddr;
 	pid_t pid[MAX_PROLE_NUM];
 
-	if ((fd = open("error.log", O_CREAT | O_WRONLY, 0666)) == -1) {
+	if ((fde = open("error.log", O_CREAT | O_WRONLY, 0666)) == -1) {
 		perror("Error in opening error.log");
 		return (EXIT_FAILURE);
 	}
-	if (dup2(fd, STDERR_FILENO) == -1) {
+	
+
+	if (dup2(fde, STDERR_FILENO) == -1) {
 		perror("Error in opening error.log");
 		return (EXIT_FAILURE);
 	}
@@ -35,6 +37,20 @@ int main()
 		perror("Error in closing error.log");
 		return (EXIT_FAILURE);
 	}
+	
+	if ((fdc = open("config.ini", O_CREAT | O_EXCL| O_RDWR, 0666)) == -1) {  //Crea config.ini, a meno che già non esista
+		if ((fdc = open("config.ini", O_RDWR)) == -1) {                      // Se config.ini già esiste, aprilo
+			perror("Error in opening config.ini");
+			return (EXIT_FAILURE);
+		}
+		//Load_Config(fdc);                                                  //Carica i valori presenti sul file config.ini
+	}
+	
+	else{
+		//Set_Config_Default(fdc);                                          //Se non esisteva, inizializza le voci ai valori di default
+	}
+	
+	//Create_log_file;
 
 	if ((sock = socket(AF_INET, SOCK_STREAM, 0)) <0) {
 		perror("Error in socket");

@@ -15,19 +15,29 @@
 #define MIN_THREAD_NUM 10        //Numero di Thread nel pool iniziale di ogni processo
 #define MAX_THREAD_NUM 50          //Massimo numero di Thread per processo
 #define MAX_ERROR_ALLOWED 5        //Masimo numero di errori ignorabili
+#define THREAD_INCREMENT 5         //Quanti Thread aggiungere ogni volta che il pool risulta insufficiente
 
 struct thread_struct {
 	int conn_sd; //socket di connessione
 };
 
 void *thread_work(void *arg) {
-	(void) arg;
+	//(void) arg;
+	while (1==1){
+		//Prendi Semaforo_Thread
+		if (arg->conn_sd!=-1)
+		{
+			//Real_Work();             //Leggere richiesta e far partire funzione adatta (unica funzione nel nostro caso), presente su altro file (per modularità)
+			//Aggiornare Log
+		}
+		//Rilascia  Semaforo_Thread
+	}
 	return 0;
 }
 
 int Process_Work(int lsock)
 {
-	int i, error=0, connsd, thread_num;
+	int i, error=0, connsd, thread_num, round=0;
 	socklen_t client_len;
 	struct sockaddr_in clientaddr;
 	pthread_t tid[MIN_THREAD_NUM];
@@ -60,9 +70,16 @@ int Process_Work(int lsock)
 			if (error <= MAX_ERROR_ALLOWED) continue;                     //Prova ad ignorare l'errore
 			 else Process_Work(lsock);                                   //Troppi fallimenti, ricomincia
 		}
+		if (tss[i]->conn_sd==-1){
+			tss[i]->conn_sd = connsd;
+			round=0
+		}
+		else round++
+		if (round=thread_num)
+		{
+			//Add Thread(THREAD_INCREASE)                                //Fatto un giro completo senza trovare Thread liberi: aumenta il pool
+		}
 		
-		tss[i].conn_sd = connsd;
-		//Thread_work                 //Da aggiungere
-	i=(i+1)%thread_num;
+		i=(i+1)%thread_num;
 	}
 }
