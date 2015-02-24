@@ -12,15 +12,19 @@
 #include "processwork.h"     //Nostro
 #include <string.h>
 #include <sys/wait.h>
+#include <sys/types.h>
+#include <sys/shm.h>
+#include <sys/ipc.h>
 
 #define SERV_PORT 5042
 #define MAX_PROLE_NUM 10    //Massimo numero processi concorrenti (oltre al padre). Si suppone che ogni processo si divida in thread.
 
 int main()
 {
-	int fde,fdc sock, i;
+	int fde,fdc, sock, i, mem;
 	struct sockaddr_in servaddr;
 	pid_t pid[MAX_PROLE_NUM];
+	sem_t *semaphore;
 
 	if ((fde = open("error.log", O_CREAT | O_WRONLY, 0666)) == -1) {
 		perror("Error in opening error.log");
@@ -78,6 +82,23 @@ int main()
 		return (EXIT_FAILURE);
 	}
 	
+	if ((mem=shmget(IPC_PRIVATE, sizeof(sem_t), O_CREAT|0666))==-1)
+	{
+		perror("Error in shmget");
+		return (EXIT_FAILURE);
+	}
+	
+	if ((semaphore=shmat(mem, NULL, 0))==NULL)
+	{
+		perror("Error in shmat");
+		return (EXIT_FAILURE);
+	}
+	
+	if (sem_init(semaphore, 1, 1) == -1) {
+			perror("sem_init");
+			return EXIT_FAILURE;
+		}
+	
 	for (i=0; i<=MAX_PROLE_NUM; i++)
 	{
 		switch (pid[i]=fork())    //Funziona?
@@ -86,7 +107,7 @@ int main()
 					perror("Error in prefork");
 					return (EXIT_FAILURE);
 			case 0:
-				Process_Work(sock);  //Da aggiungere in un nostro header
+				Process_Work(sock, semaphore);  //Da aggiungere in un nostro header
 			default:
 				continue;
 		}
