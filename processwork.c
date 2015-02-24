@@ -11,6 +11,7 @@
 #include <arpa/inet.h>
 #include <string.h>   //per memset
 #include "processwork.h"     //Nostro
+#include <semaphore.h>
 
 #define MIN_THREAD_NUM 10        //Numero di Thread nel pool iniziale di ogni processo
 #define MAX_THREAD_NUM 50          //Massimo numero di Thread per processo
@@ -64,7 +65,7 @@ int Process_Work(int lsock, sem_t *sem)
 	{
 		while (1==1)
 		{
-			if (sem_wait(&sem) == -1) {
+			if (sem_wait(sem) == -1) {
 				perror("sem_wait");
 				exit(EXIT_FAILURE);                              //O permettiamo un certo numero di errori
 			}                                                   //Andrà implementato un semaforo tra i processi per evitare l'effetto "Thundering Herd"
@@ -74,7 +75,7 @@ int Process_Work(int lsock, sem_t *sem)
 				error+=1;
 				if (error <= MAX_ERROR_ALLOWED) continue;                    //Prova ad ignorare l'errore
 				 else {
-					 if (sem_post(&sem) == -1) {
+					 if (sem_post(sem) == -1) {
 						perror("sem_post");                                         //Verficare se la chiusura improvvisa di un processo in questo punto non rende il semaforo inutilizzabile (posto a 0 con nessuno che possa incrementarlo)
 						exit(EXIT_FAILURE);
 					}
