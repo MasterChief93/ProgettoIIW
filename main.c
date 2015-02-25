@@ -9,13 +9,13 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-#include "processwork.h"     //Nostro
 #include <string.h>
 #include <sys/wait.h>
 #include <sys/types.h>
 #include <sys/shm.h>
 #include <sys/ipc.h>
 #include <semaphore.h>
+#include "processwork.h"     //Nostro
 
 #define SERV_PORT 5042
 #define MAX_PROLE_NUM 10    //Massimo numero processi concorrenti (oltre al padre). Si suppone che ogni processo si divida in thread.

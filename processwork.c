@@ -9,9 +9,10 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <semaphore.h>
 #include <string.h>   	     //per memset
 #include "processwork.h"     //Nostro
-#include <semaphore.h>
+#include "threadwork.h"
 
 #define MIN_THREAD_NUM 10          //Numero di Thread nel pool iniziale di ogni processo
 #define MAX_THREAD_NUM 50          //Massimo numero di Thread per processo
@@ -39,6 +40,10 @@ void *thread_work(void *arg) {
 			perror("pthread_cond_wait");
 			exit(EXIT_FAILURE);
 		}
+		if (pthread_mutex_unlock(&mtx_cond) < 0) {
+			perror("pthred_mutex_lock");
+			exit(EXIT_FAILURE);
+		}
 		if (pthread_mutex_lock(&mtx_struct) < 0) {
 			perror("pthred_mutex_lock");
 			exit(EXIT_FAILURE);
@@ -49,6 +54,7 @@ void *thread_work(void *arg) {
 			perror("pthread_mutex_unlock");
 			exit(EXIT_FAILURE);
 		}
+		Thread_Work(connsd)
 		//Real_Work();             //Leggere richiesta e far partire funzione adatta (unica funzione nel nostro caso), presente su altro file (per modularità)
 		//Aggiornare Log
 		if (pthread_mutex_lock(&mtx_struct) < 0) {
@@ -66,7 +72,7 @@ void *thread_work(void *arg) {
 
 int Process_Work(int lsock, sem_t *sem)
 {
-	int i, error=0, connsd, thread_num, countt, ;//, round=0;
+	int i, error=0, connsd, thread_num, countt ;//, round=0;
 	socklen_t client_len;
 	struct sockaddr_in clientaddr;
 	pthread_t tid;                           //[MIN_THREAD_NUM];
@@ -154,7 +160,7 @@ int Process_Work(int lsock, sem_t *sem)
 					exit(EXIT_FAILURE);
 				}
 			}
-			count+=THREAD_INCREMENT;
+			tss->count+=THREAD_INCREMENT;
 			
 			if (pthread_mutex_unlock(&mtx_struct) < 0) {
 				perror("pthread_mutex_unlock");
