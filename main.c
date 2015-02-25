@@ -38,7 +38,7 @@ int main()
 		return (EXIT_FAILURE);
 	}
 
-	if (close(fd)==-1){
+	if (close(fde)==-1){
 		perror("Error in closing error.log");
 		return (EXIT_FAILURE);
 	}
@@ -123,7 +123,7 @@ int main()
 					perror("Error in fork");
 					exit(EXIT_FAILURE);
 				case 0:
-					Process_Work(sock);
+					Process_Work(sock,semaphore);
 				default:
 					continue;
 			}

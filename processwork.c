@@ -9,86 +9,141 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-#include <string.h>   //per memset
+#include <string.h>   	     //per memset
 #include "processwork.h"     //Nostro
 #include <semaphore.h>
 
-#define MIN_THREAD_NUM 10        //Numero di Thread nel pool iniziale di ogni processo
+#define MIN_THREAD_NUM 10          //Numero di Thread nel pool iniziale di ogni processo
 #define MAX_THREAD_NUM 50          //Massimo numero di Thread per processo
 #define MAX_ERROR_ALLOWED 5        //Masimo numero di errori ignorabili
 #define THREAD_INCREMENT 5         //Quanti Thread aggiungere ogni volta che il pool risulta insufficiente
 
+pthread_mutex_t mtx_struct = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t mtx_cond = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t cond_variable = PTHREAD_COND_INITIALIZER;
+
 struct thread_struct {
-	int conn_sd; //socket di connessione
+	int conn_sd; 				   //socket di connessione
+	int count;                     //contatore dei thread disponibili
 };
 
 void *thread_work(void *arg) {
-	//(void) arg;
+	struct thread_struct *data = (struct thread_struct *) arg;
+	int connsd;
 	while (1==1){
-		//Prendi Semaforo_Thread
-		if (arg->conn_sd!=-1)
-		{
-			//Real_Work();             //Leggere richiesta e far partire funzione adatta (unica funzione nel nostro caso), presente su altro file (per modularità)
-			//Aggiornare Log
+		if (pthread_mutex_lock(&mtx_cond) < 0) {
+			perror("pthread_mutex_lock");
+			exit(EXIT_FAILURE);  //dovrebbero essere pthread_exit
 		}
-		//Rilascia  Semaforo_Thread
-	}
+		if (pthread_cond_wait(&cond_variable,&mtx_cond) < 0) {
+			perror("pthread_cond_wait");
+			exit(EXIT_FAILURE);
+		}
+		if (pthread_mutex_lock(&mtx_struct) < 0) {
+			perror("pthred_mutex_lock");
+			exit(EXIT_FAILURE);
+		}
+		connsd = data->conn_sd;
+		data->count -= 1;
+		if (pthread_mutex_unlock(&mtx_struct) < 0) {
+			perror("pthread_mutex_unlock");
+			exit(EXIT_FAILURE);
+		}
+		//Real_Work();             //Leggere richiesta e far partire funzione adatta (unica funzione nel nostro caso), presente su altro file (per modularità)
+		//Aggiornare Log
+		if (pthread_mutex_lock(&mtx_struct) < 0) {
+			perror("pthred_mutex_lock");
+			exit(EXIT_FAILURE);
+		}
+		data->count += 1;
+		if (pthread_mutex_unlock(&mtx_struct) < 0) {
+			perror("pthread_mutex_unlock");
+			exit(EXIT_FAILURE);
+		}
+		}
 	return 0;
 }
 
 int Process_Work(int lsock, sem_t *sem)
 {
-	int i, error=0, connsd, thread_num, round=0;
+	int i, error=0, connsd, thread_num;//, round=0;
 	socklen_t client_len;
 	struct sockaddr_in clientaddr;
-	pthread_t tid[MIN_THREAD_NUM];
-	struct thread_struct *tss[MIN_THREAD_NUM];
+	pthread_t tid;                           //[MIN_THREAD_NUM];
+	
+	struct thread_struct *tss;               //[MIN_THREAD_NUM];
+	
+	tss = malloc(sizeof(struct thread_struct));
+	
+	if (tss == NULL) {
+		perror("malloc");
+		exit(EXIT_FAILURE);
+	}
 	
 	errno=0;
+	tss->conn_sd = -1;
+	tss->count = MIN_THREAD_NUM; 								//prima o dopo?
+
 	for(i = 0; i < MIN_THREAD_NUM; i++) {
-		tss[i]->conn_sd=-1;
-		if (pthread_create(&tid[i],NULL,thread_work,tss[i]) < 0) {
+		if (pthread_create(&tid,NULL,thread_work,tss) < 0) {
 			perror("pthread_create");
 			exit(EXIT_FAILURE);
 		}
 	}
-	thread_num=MIN_THREAD_NUM;
+	
+	thread_num = MIN_THREAD_NUM;
 	
 	if (memset((void*)&clientaddr, 0, sizeof(clientaddr)) == NULL) {
 		perror("memset");
-		Process_Work(lsock);
+		exit(EXIT_FAILURE);
 	}
 		
 	i=0;
-	client_len = sizeof(clientaddr);                                    //Esiste la possibilità (remota) che vada all'interno del while
+	client_len = sizeof(clientaddr);                                         //Esiste la possibilità (remota) che vada all'interno del while
 	while (1==1)
 	{
-		while (1==1)
+		//while (1==1)
+		//{
+		if (sem_wait(sem) == -1) {
+			perror("sem_wait");
+			exit(EXIT_FAILURE);                                          //O permettiamo un certo numero di errori 
+		}                                                                //Andrà implementato un semaforo tra i processi per evitare l'effetto "Thundering Herd"
+		if ((connsd = accept(lsock, (struct sockaddr*)&clientaddr,&client_len)) < 0)
 		{
-			if (sem_wait(sem) == -1) {
-				perror("sem_wait");
-				exit(EXIT_FAILURE);                              //O permettiamo un certo numero di errori
-			}                                                   //Andrà implementato un semaforo tra i processi per evitare l'effetto "Thundering Herd"
-			if ((connsd = accept(lsock, (struct sockaddr*)&clientaddr,&client_len))<0)
-			{
-				perror("Error in accept");
-				error+=1;
-				if (error <= MAX_ERROR_ALLOWED) continue;                    //Prova ad ignorare l'errore
-				 else {
-					 if (sem_post(sem) == -1) {
-						perror("sem_post");                                         //Verficare se la chiusura improvvisa di un processo in questo punto non rende il semaforo inutilizzabile (posto a 0 con nessuno che possa incrementarlo)
-						exit(EXIT_FAILURE);
-					}
-					 exit (EXIT_FAILURE);  
-				}                                                           //Troppi fallimenti, ricomincia
-			}
-			if (sem_post(&sem) == -1) {
-				perror("sem_post");                                         //Verficare se la chiusura improvvisa di un processo in questo punto non rende il semaforo inutilizzabile (posto a 0 con nessuno che possa incrementarlo)
-				exit(EXIT_FAILURE);
-			}
+			perror("Error in accept");
+			error+=1;
+			if (error <= MAX_ERROR_ALLOWED) continue;                    //Prova ad ignorare l'errore
+			 else {
+				 if (sem_post(sem) == -1) {
+					perror("sem_post");                                  //Verficare se la chiusura improvvisa di un processo in questo punto non rende il semaforo inutilizzabile (posto a 0 con nessuno che possa incrementarlo)
+					exit(EXIT_FAILURE);
+				}
+				 exit (EXIT_FAILURE);  
+			}                                                            //Troppi fallimenti, ricomincia
 		}
-		while (1=1)
-		{
+		if (sem_post(sem) == -1) {
+			perror("sem_post");                                          //Verficare se la chiusura improvvisa di un processo in questo punto non rende il semaforo inutilizzabile (posto a 0 con nessuno che possa incrementarlo)
+			exit(EXIT_FAILURE);
+		}
+		if (pthread_mutex_lock(&mtx_struct) < 0) {
+			perror("pthread_mutex_lock");
+			exit(EXIT_FAILURE);
+		}
+		tss->conn_sd = connsd;
+		if (pthread_mutex_unlock(&mtx_struct) < 0) {
+			perror("pthread_mutex_unlock");
+			exit(EXIT_FAILURE);
+		}
+		
+		if (pthread_cond_signal(&cond_variable) < 0) {
+			perror("pthread_cond_signal");
+			exit(EXIT_FAILURE);
+		}
+	}
+}
+		//}
+		/*while (1=1)
+	
 			//Prendi Semaforo_Thread[i]
 			if (tss[i]->conn_sd==-1){
 				tss[i]->conn_sd = connsd;
@@ -102,6 +157,4 @@ int Process_Work(int lsock, sem_t *sem)
 			}
 			
 			i=(i+1)%thread_num;
-		}
-	}
-}
+		}*/
