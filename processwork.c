@@ -31,6 +31,8 @@ struct thread_struct {
 void *thread_work(void *arg) {
 	struct thread_struct *data = (struct thread_struct *) arg;
 	int connsd;
+	printf("Sono un thread!\n");
+	fflush(stdout);
 	while (1==1){
 		if (pthread_mutex_lock(&mtx_cond) < 0) {
 			perror("pthread_mutex_lock");
@@ -54,7 +56,7 @@ void *thread_work(void *arg) {
 			perror("pthread_mutex_unlock");
 			exit(EXIT_FAILURE);
 		}
-		Thread_Work(connsd)
+		Thread_Work(connsd);
 		//Real_Work();             //Leggere richiesta e far partire funzione adatta (unica funzione nel nostro caso), presente su altro file (per modularità)
 		//Aggiornare Log
 		if (pthread_mutex_lock(&mtx_struct) < 0) {

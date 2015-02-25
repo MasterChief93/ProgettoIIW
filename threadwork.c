@@ -4,16 +4,22 @@
 #include <errno.h>
 #include <string.h> 
 #include "threadwork.h"    //Nostro
+#include "processwork.h"
 
-
-Thread_Work(int connsd)
+int Thread_Work(int connsd)
 {
+	(void) connsd;
+	ssize_t writen;
 	char buff[10];
-	if (strcpy(buff, "Hello!")==NULL
+	if (strcpy(buff, "Hello!\0") == NULL)
 	{
 		perror("error in strcpy");
 		exit(EXIT_FAILURE);
 	}
-	write(STDOUT_FILENO, buff, sizeof(buff);
+	writen = write(STDOUT_FILENO, buff, sizeof(buff));
+	if (writen == 0) {
+		perror("write");
+		exit(EXIT_FAILURE);
+	}
 	return EXIT_SUCCESS;
 }

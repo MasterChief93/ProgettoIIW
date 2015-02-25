@@ -16,6 +16,7 @@
 #include <sys/ipc.h>
 #include <semaphore.h>
 #include "processwork.h"     //Nostro
+#include "threadwork.h"
 
 #define SERV_PORT 5042
 #define MAX_PROLE_NUM 10    //Massimo numero processi concorrenti (oltre al padre). Si suppone che ogni processo si divida in thread.
@@ -24,7 +25,7 @@ int main()
 {
 	int fde,fdc, sock, i, mem;
 	struct sockaddr_in servaddr;
-	pid_t pid[MAX_PROLE_NUM];
+	//pid_t pid[MAX_PROLE_NUM];
 	sem_t *semaphore;
 
 	if ((fde = open("error.log", O_CREAT | O_WRONLY, 0666)) == -1) {
@@ -100,14 +101,16 @@ int main()
 			return EXIT_FAILURE;
 		}
 	
-	for (i=0; i<=MAX_PROLE_NUM; i++)
+	for (i=1; i <= MAX_PROLE_NUM; i++)
 	{
-		switch (pid[i]=fork())    //Funziona?
+		switch (fork())    //Funziona?
 		{
 			case -1:
-					perror("Error in prefork");
-					return (EXIT_FAILURE);
+				perror("Error in prefork");
+				exit(EXIT_FAILURE);
 			case 0:
+				printf("Sono un figlio\n");
+				fflush(stdout);
 				Process_Work(sock, semaphore);  //Da aggiungere in un nostro header
 			default:
 				continue;
@@ -116,7 +119,7 @@ int main()
 	//int status; volendo si può aggiungere lo stato per un reseconto più preciso
 	
 	for (;;) {
-		if ((wait(NULL)) == 0) {
+		if ((wait(NULL)) != -1) {
 			switch (fork())
 			{
 				case -1:
