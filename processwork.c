@@ -66,7 +66,7 @@ void *thread_work(void *arg) {
 
 int Process_Work(int lsock, sem_t *sem)
 {
-	int i, error=0, connsd, thread_num;//, round=0;
+	int i, error=0, connsd, thread_num, countt, ;//, round=0;
 	socklen_t client_len;
 	struct sockaddr_in clientaddr;
 	pthread_t tid;                           //[MIN_THREAD_NUM];
@@ -74,13 +74,13 @@ int Process_Work(int lsock, sem_t *sem)
 	struct thread_struct *tss;               //[MIN_THREAD_NUM];
 	
 	tss = malloc(sizeof(struct thread_struct));
-	
+
+	errno=0;	
 	if (tss == NULL) {
 		perror("malloc");
 		exit(EXIT_FAILURE);
 	}
 	
-	errno=0;
 	tss->conn_sd = -1;
 	tss->count = MIN_THREAD_NUM; 								//prima o dopo?
 
@@ -130,6 +130,7 @@ int Process_Work(int lsock, sem_t *sem)
 			exit(EXIT_FAILURE);
 		}
 		tss->conn_sd = connsd;
+		countt=(tss->count)+1;
 		if (pthread_mutex_unlock(&mtx_struct) < 0) {
 			perror("pthread_mutex_unlock");
 			exit(EXIT_FAILURE);
@@ -139,6 +140,30 @@ int Process_Work(int lsock, sem_t *sem)
 			perror("pthread_cond_signal");
 			exit(EXIT_FAILURE);
 		}
+		
+		if ((countt<= (int) (0.1*thread_num)) && (thread_num<MAX_THREAD_NUM))       //Se il 90% dei thread sono impegnati, e non si è arrivati a MAX_THREAD_NUM, incrementa il pool
+		{
+			if (pthread_mutex_lock(&mtx_struct) < 0) {
+				perror("pthread_mutex_lock");
+				exit(EXIT_FAILURE);
+			}
+			
+			for(i = 0; i <= THREAD_INCREMENT; i++) {
+				if (pthread_create(&tid,NULL,thread_work,tss) < 0) {
+					perror("pthread_create (pool increment)");
+					exit(EXIT_FAILURE);
+				}
+			}
+			count+=THREAD_INCREMENT;
+			
+			if (pthread_mutex_unlock(&mtx_struct) < 0) {
+				perror("pthread_mutex_unlock");
+				exit(EXIT_FAILURE);
+			}
+			thread_num+=THREAD_INCREMENT;
+			
+		}
+		
 	}
 }
 		//}
