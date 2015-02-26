@@ -2,7 +2,7 @@
 #define FILEMAN_H
 
 struct Config{
-	int Serv_Port                //Porta d'ascolto del Server
+	int Serv_Port;                //Porta d'ascolto del Server
 	int Max_Prole_Num;            //Massimo numero processi concorrenti (oltre al padre). Si suppone che ogni processo si divida in thread.
 	int Min_Thread_Num;           //Numero di Thread nel pool iniziale di ogni processo
 	int Max_Thread_Num;           //Massimo numero di Thread per processo
