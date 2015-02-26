@@ -17,9 +17,22 @@
 #include <semaphore.h>
 #include "processwork.h"     //Nostro
 #include "threadwork.h"
+#include "fileman.h"
 
+/*
 #define SERV_PORT 5042
 #define MAX_PROLE_NUM 10    //Massimo numero processi concorrenti (oltre al padre). Si suppone che ogni processo si divida in thread.
+*/
+
+struct Config{
+	int Serv_Port                //Porta d'ascolto del Server
+	int Max_Prole_Num            //Massimo numero processi concorrenti (oltre al padre). Si suppone che ogni processo si divida in thread.
+	int Min_Thread_Num           //Numero di Thread nel pool iniziale di ogni processo
+	int Max_Thread_Num           //Massimo numero di Thread per processo
+	int Thread_Increment         //Quanti Thread aggiungere ogni volta che il pool risulta insufficiente
+	int Max_Error_Allowed        //Massimo numero di errori ignorabili
+};
+
 
 int main()
 {
@@ -27,6 +40,8 @@ int main()
 	struct sockaddr_in servaddr;
 	//pid_t pid[MAX_PROLE_NUM];
 	sem_t *semaphore;
+	struct Config *cfg;
+	
 
 	if ((fde = open("error.log", O_CREAT | O_WRONLY, 0666)) == -1) {
 		perror("Error in opening error.log");
@@ -44,16 +59,45 @@ int main()
 		return (EXIT_FAILURE);
 	}
 	
+	/*
+	if ((cfg=malloc(sizeof(struct Config)))==NULL)
+	{
+		perror ("Error in Malloc");
+		return (EXIT_FAILURE);
+	}
+	*/
+	
+	if ((mem=shmget(IPC_PRIVATE, sizeof(struct Config), O_CREAT|0666))==-1)
+	{
+		perror("Error in shmget");
+		return (EXIT_FAILURE);
+	}
+	
+	if ((cfg=shmat(mem, NULL, 0))==NULL)
+	{
+		perror("Error in shmat");
+		return (EXIT_FAILURE);
+	}
+	
+	
 	if ((fdc = open("config.ini", O_CREAT | O_EXCL| O_RDWR, 0666)) == -1) {  //Crea config.ini, a meno che già non esista
 		if ((fdc = open("config.ini", O_RDWR)) == -1) {                      // Se config.ini già esiste, aprilo
 			perror("Error in opening config.ini");
 			return (EXIT_FAILURE);
 		}
-		//Load_Config(fdc);                                                  //Carica i valori presenti sul file config.ini
+		if (Load_Config(fdc, cfg)==EXIT_FAILURE)                             //Carica i valori presenti sul file config.ini
+		{
+			perror("Error in loading from config.ini");
+			return (EXIT_FAILURE);
+		}                                                  
 	}
 	
 	else{
-		//Set_Config_Default(fdc);                                          //Se non esisteva, inizializza le voci ai valori di default
+		if (Set_Config_Default(fdc, cfg)==EXIT_FAILURE)                      //Se non esisteva, inizializza le voci ai valori di default
+		{
+			perror("Error in creating config.ini . Try deleting it manually.");
+			return (EXIT_FAILURE);
+		}                                          
 	}
 	
 	//Create_log_file;
@@ -70,7 +114,7 @@ int main()
 	}
 	servaddr.sin_family=AF_INET;
 	servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
-	servaddr.sin_port=htons(SERV_PORT);
+	servaddr.sin_port=htons(cfg->Serv_Port);
 
 	if(bind(sock, (struct sockaddr*)&servaddr, sizeof(servaddr))<0)
 	{
@@ -101,7 +145,7 @@ int main()
 			return EXIT_FAILURE;
 		}
 	
-	for (i=1; i <= MAX_PROLE_NUM; i++)
+	for (i=1; i <= cfg->Max_Prole_Num; i++)
 	{
 		switch (fork())    //Funziona?
 		{
@@ -111,7 +155,7 @@ int main()
 			case 0:
 				printf("Sono un figlio\n");
 				fflush(stdout);
-				Process_Work(sock, semaphore);  //Da aggiungere in un nostro header
+				Process_Work(sock, semaphore, cfg);  //Da aggiungere in un nostro header
 			default:
 				continue;
 		}
@@ -126,7 +170,7 @@ int main()
 					perror("Error in fork");
 					exit(EXIT_FAILURE);
 				case 0:
-					Process_Work(sock,semaphore);
+					Process_Work(sock,semaphore, cfg);
 				default:
 					continue;
 			}

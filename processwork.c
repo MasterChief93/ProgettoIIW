@@ -13,11 +13,14 @@
 #include <string.h>   	     //per memset
 #include "processwork.h"     //Nostro
 #include "threadwork.h"
+#include "fileman.h"
 
+/*
 #define MIN_THREAD_NUM 10          //Numero di Thread nel pool iniziale di ogni processo
 #define MAX_THREAD_NUM 50          //Massimo numero di Thread per processo
-#define MAX_ERROR_ALLOWED 5        //Masimo numero di errori ignorabili
+#define MAX_ERROR_ALLOWED 5        //Massimo numero di errori ignorabili
 #define THREAD_INCREMENT 5         //Quanti Thread aggiungere ogni volta che il pool risulta insufficiente
+*/
 
 pthread_mutex_t mtx_struct = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t mtx_cond = PTHREAD_MUTEX_INITIALIZER;
@@ -72,7 +75,7 @@ void *thread_work(void *arg) {
 	return 0;
 }
 
-int Process_Work(int lsock, sem_t *sem)
+int Process_Work(int lsock, sem_t *sem, struct Config *cfg)
 {
 	int i, error=0, connsd, thread_num, countt ;//, round=0;
 	socklen_t client_len;
@@ -81,7 +84,11 @@ int Process_Work(int lsock, sem_t *sem)
 	
 	struct thread_struct *tss;               //[MIN_THREAD_NUM];
 	
-	tss = malloc(sizeof(struct thread_struct));
+	if((tss = malloc(sizeof(struct thread_struct)))==NULL)
+	{
+		perror ("Error in Malloc");
+		return (EXIT_FAILURE);
+	}
 
 	errno=0;	
 	if (tss == NULL) {
@@ -90,16 +97,16 @@ int Process_Work(int lsock, sem_t *sem)
 	}
 	
 	tss->conn_sd = -1;
-	tss->count = MIN_THREAD_NUM; 								//prima o dopo?
+	tss->count = cfg->Min_Thread_Num; 								//prima o dopo?
 
-	for(i = 0; i < MIN_THREAD_NUM; i++) {
+	for(i = 0; i < cfg->Min_Thread_Num; i++) {
 		if (pthread_create(&tid,NULL,thread_work,tss) < 0) {
 			perror("pthread_create");
 			exit(EXIT_FAILURE);
 		}
 	}
 	
-	thread_num = MIN_THREAD_NUM;
+	thread_num = cfg->Min_Thread_Num;
 	
 	if (memset((void*)&clientaddr, 0, sizeof(clientaddr)) == NULL) {
 		perror("memset");
@@ -120,7 +127,7 @@ int Process_Work(int lsock, sem_t *sem)
 		{
 			perror("Error in accept");
 			error+=1;
-			if (error <= MAX_ERROR_ALLOWED) continue;                    //Prova ad ignorare l'errore
+			if (error <= cfg->Max_Error_Allowed) continue;                    //Prova ad ignorare l'errore
 			 else {
 				 if (sem_post(sem) == -1) {
 					perror("sem_post");                                  //Verficare se la chiusura improvvisa di un processo in questo punto non rende il semaforo inutilizzabile (posto a 0 con nessuno che possa incrementarlo)
@@ -149,26 +156,26 @@ int Process_Work(int lsock, sem_t *sem)
 			exit(EXIT_FAILURE);
 		}
 		
-		if ((countt<= (int) (0.1*thread_num)) && (thread_num<MAX_THREAD_NUM))       //Se il 90% dei thread sono impegnati, e non si è arrivati a MAX_THREAD_NUM, incrementa il pool
+		if ((countt<= (int) (0.1*thread_num)) && (thread_num<cfg->Max_Thread_Num))       //Se il 90% dei thread sono impegnati, e non si è arrivati a MAX_THREAD_NUM, incrementa il pool
 		{
 			if (pthread_mutex_lock(&mtx_struct) < 0) {
 				perror("pthread_mutex_lock");
 				exit(EXIT_FAILURE);
 			}
 			
-			for(i = 0; i <= THREAD_INCREMENT; i++) {
+			for(i = 0; i <= cfg->Thread_Increment; i++) {
 				if (pthread_create(&tid,NULL,thread_work,tss) < 0) {
 					perror("pthread_create (pool increment)");
 					exit(EXIT_FAILURE);
 				}
 			}
-			tss->count+=THREAD_INCREMENT;
+			tss->count+=cfg->Thread_Increment;
 			
 			if (pthread_mutex_unlock(&mtx_struct) < 0) {
 				perror("pthread_mutex_unlock");
 				exit(EXIT_FAILURE);
 			}
-			thread_num+=THREAD_INCREMENT;
+			thread_num+=cfg->Thread_Increment;
 			
 		}
 		
