@@ -96,6 +96,11 @@ int Load_Config(int fdc, struct Config *cfg)
 		return EXIT_FAILURE;
 	}
 	
+	if ((temp=malloc(sizeof(char)*1024))==NULL){
+		perror("Error in malloc");
+		return EXIT_FAILURE;
+	}
+	
 	//Lettura da File
 	
 	if (fscanf(streamc, "%d", &(cfg->Serv_Port))!=1)
