@@ -4,6 +4,9 @@
 #include <errno.h>
 #include <string.h> 
 #include <errno.h>
+#include <fcntl.h>
+#include <sys/types.h>
+#include <sys/socket.h>
 #include "threadwork.h"    //Nostro
 #include "processwork.h"
 
@@ -11,33 +14,39 @@
 
 int Thread_Work(int connsd)
 {
-	(void) connsd;
-	ssize_t readn,writen,totread;
+	ssize_t readn,writen;
+	
+	size_t nleft;
 	char *buff;
 	buff = malloc(sizeof(char) * BUFF_SIZE);
 	if (buff == NULL) {
 		perror("malloc");
 		exit(EXIT_FAILURE);
 	}
+	char *ptr = buff;
+	/*if (fcntl(connsd, F_SETFL, O_NONBLOCK) == -1) {  		// set to non-blocking
+		perror("fcntl");
+		exit(EXIT_FAILURE);
+	}*/
 	errno = 0;
-	totread = BUFF_SIZE;
-	while(totread > 0) {
-		readn = read(connsd, buff, sizeof(buff));
-		if (readn < 0) {
-			if (errno == EINTR)
-				readn = 0;
+	nleft = BUFF_SIZE;
+	
+	while(nleft > 0) {
+		if ((readn = recv(connsd, ptr, nleft, MSG_DONTWAIT)) < 0) {
+			if (errno == EAGAIN || errno == EWOULDBLOCK) {
+				*ptr = '\0';
+				break;
+			}
 			else {
-				perror("write");
+				perror("read");
 				exit(EXIT_FAILURE);
 			}
 		}
 		else if (readn == 0) break;
-		totread -= readn;
-		buff += readn;
+		nleft -= readn;
+		ptr += readn;
 	}
-	printf("%s",buff);
-	fflush(stdout);
-	writen = write(STDOUT_FILENO,buff,sizeof(buff));
+	writen = write(STDOUT_FILENO,buff,strlen(buff));
 	if (writen == 0) {
 		perror("write");
 		exit(EXIT_FAILURE);

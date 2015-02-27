@@ -27,7 +27,7 @@
 
 int main()
 {
-	int fde,fdc, sock, i, mem;
+	int reuse,fde,fdc, sock, i, mem;
 	struct sockaddr_in servaddr;
 	//pid_t pid[MAX_PROLE_NUM];
 	sem_t *semaphore;
@@ -106,6 +106,11 @@ int main()
 	servaddr.sin_family=AF_INET;
 	servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
 	servaddr.sin_port=htons(cfg->Serv_Port);
+
+	if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &reuse,sizeof(int)) < 0) {
+		perror("Error in setsockopt");
+		exit(EXIT_FAILURE);
+	}
 
 	if(bind(sock, (struct sockaddr*)&servaddr, sizeof(servaddr))<0)
 	{
