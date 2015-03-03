@@ -71,7 +71,7 @@ void *thread_work(void *arg) {
 			perror("pthread_mutex_unlock");
 			exit(EXIT_FAILURE);
 		}
-		}
+	}
 	return 0;
 }
 

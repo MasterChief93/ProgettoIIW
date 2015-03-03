@@ -14,7 +14,7 @@
 
 int Thread_Work(int connsd)
 {
-	ssize_t readn,writen;
+	ssize_t readn, writen;
 	
 	size_t nleft;
 	char *buff;
@@ -30,13 +30,14 @@ int Thread_Work(int connsd)
 	}*/
 	errno = 0;
 	nleft = BUFF_SIZE;
-	
 	while(nleft > 0) {
 		if ((readn = recv(connsd, ptr, nleft, MSG_DONTWAIT)) < 0) {
 			if (errno == EAGAIN || errno == EWOULDBLOCK) {
 				*ptr = '\0';
 				break;
 			}
+			else if (errno == EINTR) 
+				readn = 0;
 			else {
 				perror("read");
 				exit(EXIT_FAILURE);
@@ -46,12 +47,27 @@ int Thread_Work(int connsd)
 		nleft -= readn;
 		ptr += readn;
 	}
-	writen = write(STDOUT_FILENO,buff,strlen(buff));
-	if (writen == 0) {
-		perror("write");
+	char *saveptr;
+	ptr = strtok_r(buff,"\r\n",&saveptr);
+	ptr = strtok_r(ptr," ",&saveptr); //ptr conterrà il metodo
+	if (strcmp(ptr,"GET") == 0) {
+		//chiama funzione GET
+	}
+	else if (strcmp(ptr,"HEAD") == 0) {
+		//chiama funzione HEAD
+		}
+	else {
+		writen = send(connsd,"HTTP/1.1 405 Method Not Allowed\r\n\r\n",strlen("HTTP/1.1 405 Method Not Allowed\r\n\r\n"),MSG_DONTWAIT);
+		if (writen == 0) {
+			perror("write");
+			exit(EXIT_FAILURE);
+		}
+	}
+	if (shutdown(connsd,SHUT_RDWR) < 0) {
+		perror("shutdown");
 		exit(EXIT_FAILURE);
 	}
-	if (close(connsd) == -1) {
+	if (close(connsd) < 0) {
 		perror("close");
 		exit(EXIT_FAILURE);
 	}
