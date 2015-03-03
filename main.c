@@ -34,7 +34,7 @@ int main()
 	struct Config *cfg;
 	
 
-	if ((fde = open("error.log", O_CREAT | O_WRONLY, 0666)) == -1) {
+	if ((fde = open("error.log", O_CREAT | O_TRUNC | O_WRONLY, 0666)) == -1) {
 		perror("Error in opening error.log");
 		return (EXIT_FAILURE);
 	}
