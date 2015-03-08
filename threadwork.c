@@ -7,12 +7,14 @@
 #include <fcntl.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <sqlite3.h>
 #include "threadwork.h"    //Nostro
 #include "processwork.h"
+#include "db.h"
 
 #define BUFF_SIZE 1024
 
-int Thread_Work(int connsd)
+int Thread_Work(int connsd, int fdl, sqlite3 *db)
 {
 	ssize_t readn, writen;
 	

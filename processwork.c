@@ -10,10 +10,12 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <semaphore.h>
+#include <sqlite3.h>
 #include <string.h>   	     //per memset
 #include "processwork.h"     //Nostro
 #include "threadwork.h"
 #include "fileman.h"
+#include "db.h"
 
 /*
 #define MIN_THREAD_NUM 10          //Numero di Thread nel pool iniziale di ogni processo
@@ -29,11 +31,14 @@ pthread_cond_t cond_variable = PTHREAD_COND_INITIALIZER;
 struct thread_struct {
 	int conn_sd; 				   //socket di connessione
 	int count;                     //contatore dei thread disponibili
+	int fdl;                       //file di logging
+	sqlite3 *db;                   //indirizzo del database
 };
 
 void *thread_work(void *arg) {
 	struct thread_struct *data = (struct thread_struct *) arg;
-	int connsd;
+	int connsd, fdl;
+	sqlite3 *db;
 	printf("Sono un thread!\n");
 	fflush(stdout);
 	while (1==1){
@@ -55,11 +60,14 @@ void *thread_work(void *arg) {
 		}
 		connsd = data->conn_sd;
 		data->count -= 1;
+		fdl= data->fdl;
+		db=data->db;
+		
 		if (pthread_mutex_unlock(&mtx_struct) < 0) {
 			perror("pthread_mutex_unlock");
 			exit(EXIT_FAILURE);
 		}
-		Thread_Work(connsd);
+		Thread_Work(connsd, fdl, db);
 		//Real_Work();             //Leggere richiesta e far partire funzione adatta (unica funzione nel nostro caso), presente su altro file (per modularità)
 		//Aggiornare Log
 		if (pthread_mutex_lock(&mtx_struct) < 0) {
@@ -75,7 +83,7 @@ void *thread_work(void *arg) {
 	return 0;
 }
 
-int Process_Work(int lsock, sem_t *sem, struct Config *cfg)
+int Process_Work(int lsock, sem_t *sem, struct Config *cfg,  int fdl, sqlite3 *db)
 {
 	int i, error=0, connsd, thread_num, countt ;//, round=0;
 	socklen_t client_len;
@@ -98,6 +106,8 @@ int Process_Work(int lsock, sem_t *sem, struct Config *cfg)
 	
 	tss->conn_sd = -1;
 	tss->count = cfg->Min_Thread_Num; 								//prima o dopo?
+	tss->fdl = fdl;
+	tss->db = db;
 
 	for(i = 0; i < cfg->Min_Thread_Num; i++) {
 		if (pthread_create(&tid,NULL,thread_work,tss) < 0) {

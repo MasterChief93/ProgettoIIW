@@ -15,9 +15,11 @@
 #include <sys/shm.h>
 #include <sys/ipc.h>
 #include <semaphore.h>
+#include <sqlite3.h>
 #include "processwork.h"     //Nostro
 #include "threadwork.h"
 #include "fileman.h"
+#include "db.h"
 
 /*
 #define SERV_PORT 5042
@@ -27,11 +29,12 @@
 
 int main()
 {
-	int reuse,fde,fdc, sock, i, mem;
+	int reuse,fde,fdc, sock, i, mem, fdl;
 	struct sockaddr_in servaddr;
 	//pid_t pid[MAX_PROLE_NUM];
 	sem_t *semaphore;
 	struct Config *cfg;
+	sqlite3 *db;
 	
 
 	if ((fde = open("error.log", O_CREAT | O_TRUNC | O_WRONLY, 0666)) == -1) {
@@ -57,6 +60,8 @@ int main()
 		return (EXIT_FAILURE);
 	}
 	*/
+	
+
 	
 	if ((mem=shmget(IPC_PRIVATE, sizeof(struct Config), O_CREAT|0666))==-1)
 	{
@@ -92,6 +97,17 @@ int main()
 	}
 	
 	//Create_log_file;
+	if ((fdl = open("log,log", O_CREAT | O_EXCL| O_APPEND, 0666)) == -1) {  //Crea log.log, a meno che già non esista
+		if ((fdc = open("log.log", O_APPEND)) == -1) {                      // Se log.log già esiste, aprilo
+			perror("Error in opening log.log");
+			return (EXIT_FAILURE);
+		}
+	
+	if (sqlite3_open("db/images.db", &db)){
+		perror("error in sqlite_open");
+		sqlite3_close(db);
+		return EXIT_FAILURE;
+	}
 
 	if ((sock = socket(AF_INET, SOCK_STREAM, 0)) <0) {
 		perror("Error in socket");
@@ -151,7 +167,7 @@ int main()
 			case 0:
 				printf("Sono un figlio\n");
 				fflush(stdout);
-				Process_Work(sock, semaphore, cfg);  //Da aggiungere in un nostro header
+				Process_Work(sock, semaphore, cfg, fdl, db);  //Da aggiungere in un nostro header
 			default:
 				continue;
 		}
@@ -166,7 +182,7 @@ int main()
 					perror("Error in fork");
 					exit(EXIT_FAILURE);
 				case 0:
-					Process_Work(sock,semaphore, cfg);
+					Process_Work(sock,semaphore, cfg, fdl, db);
 				default:
 					continue;
 			}
@@ -174,6 +190,6 @@ int main()
 	}
 			
 
-
+	sqlite3_close(db);
 	return 0;
 }
