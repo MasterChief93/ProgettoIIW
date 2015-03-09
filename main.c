@@ -97,7 +97,7 @@ int main()
 	}
 	
 	//Create_log_file;
-	if ((fdl = open("log,log", O_CREAT | O_EXCL| O_APPEND, 0666)) == -1) {  //Crea log.log, a meno che già non esista
+	if ((fdl = open("log.log", O_CREAT | O_EXCL| O_APPEND, 0666)) == -1) {  //Crea log.log, a meno che già non esista
 		if ((fdc = open("log.log", O_APPEND)) == -1) {                      // Se log.log già esiste, aprilo
 			perror("Error in opening log.log");
 			return (EXIT_FAILURE);
@@ -111,12 +111,14 @@ int main()
 
 	if ((sock = socket(AF_INET, SOCK_STREAM, 0)) <0) {
 		perror("Error in socket");
+		sqlite3_close(db);
 		return (EXIT_FAILURE);
 	}
 
 	if (memset((void*)&servaddr, 0, sizeof(servaddr))==NULL)
 	{
 		perror("Error in memset");
+		sqlite3_close(db);
 		return (EXIT_FAILURE);
 	}
 	servaddr.sin_family=AF_INET;
@@ -125,35 +127,41 @@ int main()
 
 	if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &reuse,sizeof(int)) < 0) {
 		perror("Error in setsockopt");
+		sqlite3_close(db);
 		exit(EXIT_FAILURE);
 	}
 
 	if(bind(sock, (struct sockaddr*)&servaddr, sizeof(servaddr))<0)
 	{
 		perror("Error in bind");
+		sqlite3_close(db);
 		return (EXIT_FAILURE);
 	}
 	
 	if (listen(sock, SOMAXCONN)<0)   //SOMAXCONN = acccetta connessioni finchè il SO non getta la spugna
 	{
 		perror("Error in listen");
+		sqlite3_close(db);
 		return (EXIT_FAILURE);
 	}
 	
 	if ((mem=shmget(IPC_PRIVATE, sizeof(sem_t), O_CREAT|0666))==-1)
 	{
 		perror("Error in shmget");
+		sqlite3_close(db);
 		return (EXIT_FAILURE);
 	}
 	
 	if ((semaphore=shmat(mem, NULL, 0))==NULL)
 	{
 		perror("Error in shmat");
+		sqlite3_close(db);
 		return (EXIT_FAILURE);
 	}
 	
 	if (sem_init(semaphore, 1, 1) == -1) {
 			perror("sem_init");
+			sqlite3_close(db);
 			return EXIT_FAILURE;
 		}
 	
@@ -163,6 +171,7 @@ int main()
 		{
 			case -1:
 				perror("Error in prefork");
+				sqlite3_close(db);
 				exit(EXIT_FAILURE);
 			case 0:
 				printf("Sono un figlio\n");
@@ -180,6 +189,7 @@ int main()
 			{
 				case -1:
 					perror("Error in fork");
+					sqlite3_close(db);
 					exit(EXIT_FAILURE);
 				case 0:
 					Process_Work(sock,semaphore, cfg, fdl, db);

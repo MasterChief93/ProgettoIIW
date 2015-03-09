@@ -51,13 +51,14 @@ int main()
 }
 */
 
-
+/*
 int callback (void * res, int argc, char **argv, char **azColName)
 {
 	int * i=(int *) res;
-	int j;
+	long j;
 	char *endptr;
 	printf("argv0=%s\n", argv[0]);
+	errno=0;
 	j=strtol(argv[0], &endptr, 0);
 	if (errno!=0)
 	{
@@ -100,10 +101,46 @@ int foo()
 int main()
 {
 	int result=0;
+	char string[10];
 	
 	result =foo();
 	printf("result=%d\n", result);
+	snprintf(string, sizeof(char)*10, "hello");
+	printf("%s\n", string);
 	
 	return EXIT_SUCCESS;
 }
+*/
 
+
+
+
+int main()
+{
+	sqlite3 *db;
+	char *zErrMsg = 0;
+	char dbcomm[512], text[10];
+	
+	errno=0;
+	if (sqlite3_open("db/test.db", &db)){
+		perror("error in sqlite_open");
+		sqlite3_close(db);
+		return EXIT_FAILURE;
+	}
+	snprintf(text, sizeof(char)*512, "%s", "image");
+	printf("%s\n", text);
+	snprintf(dbcomm, sizeof(char)*512, "INSERT INTO tb2 values('%s', datetime())",  text);
+	printf("%s\n", dbcomm);
+	errno=0;
+	if (sqlite3_exec(db, dbcomm, NULL, 0, &zErrMsg)){
+		perror("error in sqlite_exec");
+		sqlite3_free(zErrMsg);
+		return EXIT_FAILURE;
+	}
+	
+	sqlite3_close(db);
+	
+	return EXIT_SUCCESS;
+	
+	
+}
