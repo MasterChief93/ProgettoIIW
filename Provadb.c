@@ -114,7 +114,7 @@ int main()
 
 
 
-
+/*
 int main()
 {
 	sqlite3 *db;
@@ -137,6 +137,57 @@ int main()
 		sqlite3_free(zErrMsg);
 		return EXIT_FAILURE;
 	}
+	
+	sqlite3_close(db);
+	
+	return EXIT_SUCCESS;
+	
+	
+}
+* */
+
+
+int callback (void * res, int argc, char **argv, char **azColName)
+{
+	char *val=(char *) res;
+	
+	printf("%s\n", argv[0]);
+	strcpy(val, argv[0]);
+	printf("%s\n", val);
+	return EXIT_SUCCESS;  
+}
+
+
+int main()
+{
+	sqlite3 *db;
+	char *zErrMsg = 0;
+	char *nameimm, dbcomm[512];
+	
+	nameimm= malloc(sizeof(char)*512);
+	
+	errno=0;
+	if (sqlite3_open("db/test.db", &db)){
+		perror("error in sqlite_open");
+		sqlite3_close(db);
+		return EXIT_FAILURE;
+	}
+	errno=0;
+	if (sqlite3_exec(db, "select name from tb2 where date = (select max(date) from tb2)", callback, (void *)nameimm, &zErrMsg)){
+		perror("error in sqlite_exec");
+		sqlite3_free(zErrMsg);
+		return EXIT_FAILURE;
+	}
+	printf("%s\n", nameimm);
+	snprintf(dbcomm, sizeof(char)*512, "DELETE FROM tb2 WHERE name='%s'",  nameimm);
+	
+	errno=0;
+	if (sqlite3_exec(db, dbcomm, NULL, 0, &zErrMsg)){
+		perror("error in sqlite_exec");
+		sqlite3_free(zErrMsg);
+		return EXIT_FAILURE;
+	}
+	
 	
 	sqlite3_close(db);
 	
