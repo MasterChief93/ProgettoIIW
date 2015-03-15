@@ -10,6 +10,14 @@ int callbackchk (void * res, int argc, char **argv, char **azColName)
 {
 	long j;
 	char *endptr;
+	int *val = (int *) res;
+	(void) azColName;
+	
+	if (argc!=1)
+	{
+		fprintf(stderr, "Unexpected number of columns");
+		return EXIT_FAILURE;
+	}  
 	
 	errno=0;
 	j=strtol(argv[0], &endptr, 0);
@@ -18,8 +26,8 @@ int callbackchk (void * res, int argc, char **argv, char **azColName)
 		perror("error in strtol");
 		return EXIT_FAILURE;
 	}  
-	if (j==0) *res=0;
-	else *res=1;
+	if (j==0) *val=0;
+	else *val=1;
 	return EXIT_SUCCESS;
 }
 
@@ -65,8 +73,8 @@ int dbadd(sqlite3 *db, struct Record rd, int flag)                //Add to table
 		return (EXIT_FAILURE);
 	}
 	
-	if (flag==0) snprintf(dbcomm, sizeof(char)*512, "INSERT INTO imag values('%s', datetime(), %l",  rd.name, rd.acc);
-	else if (flag==1) snprintf(dbcomm, sizeof(char)*512, "INSERT INTO orig values('%s', datetime(), %l",  rd.name, rd.acc);
+	if (flag==0) snprintf(dbcomm, sizeof(char)*512, "INSERT INTO imag values('%s', datetime(), %long",  rd.name, rd.acc);
+	else if (flag==1) snprintf(dbcomm, sizeof(char)*512, "INSERT INTO orig values('%s', datetime(), %long",  rd.name, rd.acc);  //Non è normale...
 	else {
 		fprintf(stderr, "Error in dbadd: wrong flag value");
 		exit(EXIT_FAILURE);
@@ -112,6 +120,14 @@ int dbremove(sqlite3 *db, char *image, int flag)                 //Remove from t
 
 int callbackremol (void * res, int argc, char **argv, char **azColName)
 {
+	(void) azColName;
+	
+	if (argc!=1)
+	{
+		fprintf(stderr, "Unexpected number of columns");
+		return EXIT_FAILURE;
+	}  
+	
 	char *val=(char *) res;
 	
 	strcpy(val, argv[0]);
@@ -152,6 +168,13 @@ int callbackacc (void * res, int argc, char **argv, char **azColName)
 	int *val=(int *) res;
 	long j;
 	char *endptr;
+	(void) azColName;
+	
+	if (argc!=1)
+	{
+		fprintf(stderr, "Unexpected number of columns");
+		return EXIT_FAILURE;
+	}  
 	
 	errno=0;
 	j=strtol(argv[0], &endptr, 0);
@@ -177,7 +200,7 @@ int dbcheck(sqlite3 *db, char *image, char *origimag )           //Call dbcontro
 		return (EXIT_FAILURE);
 	}
 	
-	if (check = dbcontrol(db, image) ==1)
+	if (check = dbcontrol(db, image, 0) ==1)
 	{
 		snprintf(dbcomm, sizeof(char)*512, "SELECT acc FROM imag WHERE name=%s",  image);
 	if (sqlite3_exec(db, dbcomm, callbackacc, acc, &zErrMsg)){
@@ -193,7 +216,7 @@ int dbcheck(sqlite3 *db, char *image, char *origimag )           //Call dbcontro
 			return EXIT_FAILURE;
 		}
 	}
-	else if (check = dbcontrol(db, image) ==1)
+	else if (check = dbcontrol(db, image, 0) ==1)
 	{
 		struct Record rd = {image, 0};
 		dbadd(db, rd, 0);
@@ -222,6 +245,13 @@ int callbackcount (void * res, int argc, char **argv, char **azColName)
 	int *val=(int *) res;
 	long j;
 	char *endptr;
+	(void) azColName;
+	
+	if (argc!=1)
+	{
+		fprintf(stderr, "Unexpected number of columns");
+		return EXIT_FAILURE;
+	}  
 	
 	errno=0;
 	j=strtol(argv[0], &endptr, 0);
@@ -266,6 +296,14 @@ int dbcount(sqlite3 *db, int flag)              //Return the number of existing 
 
 int callbacksel (void * res, int argc, char **argv, char **azColName)
 {
+	(void) azColName;
+	
+	if (argc!=3)
+	{
+		fprintf(stderr, "Unexpected number of columns");
+		return EXIT_FAILURE;
+	}  
+	
 	char * s=(char *)res;
 	snprintf(s, sizeof(char)*512, "%s %s %s", argv[0], argv[1], argv[2]);
 	return EXIT_SUCCESS;
