@@ -1,7 +1,7 @@
 CC=gcc
-CFLAGS = -lm -pthread -I.
-DEPS = processwork.h threadwork.h fileman.h
-OBJ = main.o processwork.o threadwork.o config.o
+CFLAGS = -lm -pthread -lsqlite3 -I.
+DEPS = processwork.h threadwork.h fileman.h db.h
+OBJ = main.o processwork.o threadwork.o config.o provadb.o db.o
 
 %.o: %.c $(DEPS)
 	$(CC) -Wall -O2 -Wextra -c -o $@ $< $(CFLAGS)

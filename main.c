@@ -144,8 +144,8 @@ int main()
 		sqlite3_close(db);
 		return (EXIT_FAILURE);
 	}
-	
-	if ((mem=shmget(IPC_PRIVATE, sizeof(sem_t), O_CREAT|0666))==-1)     //This and the two after: Semaphore to manage the various processes, mostly to avoid the "thundering herd" effect on the Listen - Questo ed i due successivi: Semaforo per gestire i vari processi, principalmente per evitare l'effetto "Thundering Herd" sulla Listen.
+	//This and the two after: Semaphore to manage the various processes, mostly to avoid the "thundering herd" effect on the Listen - Questo ed i due successivi: Semaforo per gestire i vari processi, principalmente per evitare l'effetto "Thundering Herd" sulla Listen.
+	if ((mem=shmget(IPC_PRIVATE, sizeof(sem_t), O_CREAT|0666))==-1)     
 	{
 		perror("Error in shmget");
 		sqlite3_close(db);
@@ -197,9 +197,7 @@ int main()
 					continue;
 			}
 		}
-	}
-			
-
+	}	
 	sqlite3_close(db);
-	return 0;
+	return EXIT_SUCCESS;
 }
