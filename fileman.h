@@ -2,14 +2,14 @@
 #define FILEMAN_H
 
 struct Config{
-	int Serv_Port;                //Porta d'ascolto del Server
-	int Max_Prole_Num;            //Massimo numero processi concorrenti (oltre al padre). Si suppone che ogni processo si divida in thread.
-	int Min_Thread_Num;           //Numero di Thread nel pool iniziale di ogni processo
-	int Max_Thread_Num;           //Massimo numero di Thread per processo
-	int Thread_Increment;         //Quanti Thread aggiungere ogni volta che il pool risulta insufficiente
-	int Max_Error_Allowed;        //Massimo numero di errori ignorabili
+	int Serv_Port;                //Server listening port - Porta d'ascolto del Server
+	int Max_Prole_Num;            //Maximim number of concurrent processes (excluding the original). It is assumed that every process creates several threads. - Massimo numero processi concorrenti (oltre al padre). Si suppone che ogni processo si divida in thread.
+	int Min_Thread_Num;           //Number of threads in the initial pool of every process- Numero di Thread nel pool iniziale di ogni processo
+	int Max_Thread_Num;           //Maximum number of thread per process - Massimo numero di Thread per processo
+	int Thread_Increment;         //How many threads to add every time the pool is found lacking - Quanti Thread aggiungere ogni volta che il pool risulta insufficiente
+	int Max_Error_Allowed;        //Maximum number of ignorable errors - Massimo numero di errori ignorabili
 };
 
-extern int Load_Config(int fdc, struct Config *cfg);
-extern int Set_Config_Default(int fdc, struct Config *cfg);
+extern int Load_Config(int fdc, struct Config *cfg);          //Load in the program the values found in the config.ini file - Carica nel programma i valori trovati sul file config.ini
+extern int Set_Config_Default(int fdc, struct Config *cfg);   //Creates the config.ini file, load the default values in both the program and the file - Crea il file config.ini, carica i valori di default sia nel programma che sul file
 #endif

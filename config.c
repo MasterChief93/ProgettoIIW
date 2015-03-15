@@ -9,7 +9,7 @@
 #include "fileman.h"
 
 
-int Set_Config_Default(int fdc, struct Config *cfg)
+int Set_Config_Default(int fdc, struct Config *cfg)  //Creates the config.ini file, load the default values in both the program and the file - Crea il file config.ini, carica i valori di default sia nel programma che sul file
 {
 	FILE *streamc;
 	struct Config Default = {
@@ -85,7 +85,7 @@ int Set_Config_Default(int fdc, struct Config *cfg)
 }
 
 
-int Load_Config(int fdc, struct Config *cfg)
+int Load_Config(int fdc, struct Config *cfg)  //Load in the program the values found in the config.ini file - Carica nel programma i valori trovati sul file config.ini
 {
 	char *temp;
 	FILE *streamc;

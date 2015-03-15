@@ -62,7 +62,7 @@ int Thread_Work(int connsd, int fdl, sqlite3 *db)
 	fflush(stdout);
 	char *saveptr;
 	ptr = strtok_r(buff,"\r\n",&saveptr);
-	ptr = strtok_r(ptr," ",&saveptr); //ptr conterrà il metodo
+	ptr = strtok_r(ptr," ",&saveptr); //ptr will have the html method - ptr conterrà il metodo html
 	printf("Ho fatto le strtok %s\n",ptr);
 	fflush(stdout);
 	if (strcmp(ptr,"GET") == 0) {

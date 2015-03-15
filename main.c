@@ -76,12 +76,12 @@ int main()
 	}
 	
 	
-	if ((fdc = open("config.ini", O_CREAT | O_EXCL| O_RDWR, 0666)) == -1) {  //Crea config.ini, a meno che già non esista
-		if ((fdc = open("config.ini", O_RDWR)) == -1) {                      // Se config.ini già esiste, aprilo
+	if ((fdc = open("config.ini", O_CREAT | O_EXCL| O_RDWR, 0666)) == -1) {  //Create confug.ini, unless it already exists - Crea config.ini, a meno che già non esista
+		if ((fdc = open("config.ini", O_RDWR)) == -1) {                      // If config.ini already exists, open it - Se config.ini già esiste, aprilo
 			perror("Error in opening config.ini");
 			return (EXIT_FAILURE);
 		}
-		if (Load_Config(fdc, cfg)==EXIT_FAILURE)                             //Carica i valori presenti sul file config.ini
+		if (Load_Config(fdc, cfg)==EXIT_FAILURE)                             //Load the values found on config.ini - Carica i valori presenti sul file config.ini
 		{
 			perror("Error in loading from config.ini");
 			return (EXIT_FAILURE);
@@ -89,7 +89,7 @@ int main()
 	}
 	
 	else{
-		if (Set_Config_Default(fdc, cfg)==EXIT_FAILURE)                      //Se non esisteva, inizializza le voci ai valori di default
+		if (Set_Config_Default(fdc, cfg)==EXIT_FAILURE)                      //If the file didn't exists, initialize it to the default values - Se non esisteva, inizializza le voci ai valori di default
 		{
 			perror("Error in creating config.ini . Try deleting it manually.");
 			return (EXIT_FAILURE);
@@ -97,19 +97,19 @@ int main()
 	}
 	
 	//Create_log_file;
-	if ((fdl = open("log.log", O_CREAT | O_EXCL| O_APPEND, 0666)) == -1) {  //Crea log.log, a meno che già non esista
-		if ((fdc = open("log.log", O_APPEND)) == -1) {                      // Se log.log già esiste, aprilo
+	if ((fdl = open("log.log", O_CREAT | O_EXCL| O_APPEND, 0666)) == -1) {  // Create log.log, unless it already exists - Crea log.log, a meno che già non esista
+		if ((fdc = open("log.log", O_APPEND)) == -1) {                      // If log.log already exists, open it - Se log.log già esiste, aprilo
 			perror("Error in opening log.log");
 			return (EXIT_FAILURE);
 		}
 	
-	if (sqlite3_open("db/images.db", &db)){
+	if (sqlite3_open("db/images.db", &db)){  //Open the conection to the database - Apre la connessione al database
 		perror("error in sqlite_open");
-		sqlite3_close(db);
+		sqlite3_close(db);                    //In any case of server shutdown, close the db connection first - In ogni caso di chiusura del server, chiude anche la connessione al database 
 		return EXIT_FAILURE;
 	}
 
-	if ((sock = socket(AF_INET, SOCK_STREAM, 0)) <0) {
+	if ((sock = socket(AF_INET, SOCK_STREAM, 0)) <0) {  
 		perror("Error in socket");
 		sqlite3_close(db);
 		return (EXIT_FAILURE);
@@ -125,7 +125,7 @@ int main()
 	servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
 	servaddr.sin_port=htons(cfg->Serv_Port);
 
-	if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &reuse,sizeof(int)) < 0) {
+	if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &reuse,sizeof(int)) < 0) {        //To allow the reuse of the port in case of restart of the server - Per permettere il riuso della porta in caso di riavvio del server
 		perror("Error in setsockopt");
 		sqlite3_close(db);
 		exit(EXIT_FAILURE);
@@ -138,14 +138,14 @@ int main()
 		return (EXIT_FAILURE);
 	}
 	
-	if (listen(sock, SOMAXCONN)<0)   //SOMAXCONN = acccetta connessioni finchè il SO non getta la spugna
+	if (listen(sock, SOMAXCONN)<0)   //SOMAXCONN = accept connections untli the SO gives up - SOMAXCONN = acccetta connessioni finchè il SO non getta la spugna
 	{
 		perror("Error in listen");
 		sqlite3_close(db);
 		return (EXIT_FAILURE);
 	}
 	
-	if ((mem=shmget(IPC_PRIVATE, sizeof(sem_t), O_CREAT|0666))==-1)
+	if ((mem=shmget(IPC_PRIVATE, sizeof(sem_t), O_CREAT|0666))==-1)     //This and the two after: Semaphore to manage the various processes, mostly to avoid the "thundering herd" effect on the Listen - Questo ed i due successivi: Semaforo per gestire i vari processi, principalmente per evitare l'effetto "Thundering Herd" sulla Listen.
 	{
 		perror("Error in shmget");
 		sqlite3_close(db);
@@ -165,7 +165,7 @@ int main()
 			return EXIT_FAILURE;
 		}
 	
-	for (i=1; i <= cfg->Max_Prole_Num; i++)
+	for (i=1; i <= cfg->Max_Prole_Num; i++)        //Preforking - Preforking
 	{
 		switch (fork())    //Funziona?
 		{
@@ -183,7 +183,7 @@ int main()
 	}
 	//int status; volendo si può aggiungere lo stato per un reseconto più preciso
 	
-	for (;;) {
+	for (;;) {                                          // Whenever a process falls, another rises to get his place - Quando un processo cade, un altro viene creato per prenderne il posto
 		if ((wait(NULL)) != -1) {
 			switch (fork())
 			{

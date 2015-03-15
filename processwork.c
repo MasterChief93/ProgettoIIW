@@ -29,10 +29,10 @@ pthread_mutex_t mtx_cond = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t cond_variable = PTHREAD_COND_INITIALIZER;
 
 struct thread_struct {
-	int conn_sd; 				   //socket di connessione
-	int count;                     //contatore dei thread disponibili
-	int fdl;                       //file di logging
-	sqlite3 *db;                   //indirizzo del database
+	int conn_sd; 				   //Connection socket - Socket di connessione
+	int count;                     //Available thread counter - Contatore dei thread disponibili
+	int fdl;                       //Logging filoe - File di logging
+	sqlite3 *db;                   //Database Address - Indirizzo del database
 };
 
 void *thread_work(void *arg) {
@@ -46,7 +46,7 @@ void *thread_work(void *arg) {
 			perror("pthread_mutex_lock");
 			exit(EXIT_FAILURE);  //dovrebbero essere pthread_exit
 		}
-		if (pthread_cond_wait(&cond_variable,&mtx_cond) < 0) {
+		if (pthread_cond_wait(&cond_variable,&mtx_cond) < 0) {      //The thread sleeps until (one of them, casually) receives a signal - Il thread dorme finchè (uno, a caso) non riceve un segnale.
 			perror("pthread_cond_wait");
 			exit(EXIT_FAILURE);
 		}
@@ -109,7 +109,7 @@ int Process_Work(int lsock, sem_t *sem, struct Config *cfg,  int fdl, sqlite3 *d
 	tss->fdl = fdl;
 	tss->db = db;
 
-	for(i = 0; i < cfg->Min_Thread_Num; i++) {
+	for(i = 0; i < cfg->Min_Thread_Num; i++) {   //Prethreading - Prethreading
 		if (pthread_create(&tid,NULL,thread_work,tss) < 0) {
 			perror("pthread_create");
 			exit(EXIT_FAILURE);
@@ -137,14 +137,14 @@ int Process_Work(int lsock, sem_t *sem, struct Config *cfg,  int fdl, sqlite3 *d
 		{
 			perror("Error in accept");
 			error+=1;
-			if (error <= cfg->Max_Error_Allowed) continue;                    //Prova ad ignorare l'errore
+			if (error <= cfg->Max_Error_Allowed) continue;                    //Try to ignore the error - Prova ad ignorare l'errore
 			 else {
 				 if (sem_post(sem) == -1) {
 					perror("sem_post");                                  //Verficare se la chiusura improvvisa di un processo in questo punto non rende il semaforo inutilizzabile (posto a 0 con nessuno che possa incrementarlo)
 					exit(EXIT_FAILURE);
 				}
 				 exit (EXIT_FAILURE);  
-			}                                                            //Troppi fallimenti, ricomincia
+			}                                                            //Too many failures, restart - Troppi fallimenti, ricomincia
 		}
 		if (sem_post(sem) == -1) {
 			perror("sem_post");                                          //Verficare se la chiusura improvvisa di un processo in questo punto non rende il semaforo inutilizzabile (posto a 0 con nessuno che possa incrementarlo)
@@ -166,7 +166,7 @@ int Process_Work(int lsock, sem_t *sem, struct Config *cfg,  int fdl, sqlite3 *d
 			exit(EXIT_FAILURE);
 		}
 		
-		if ((countt<= (int) (0.1*thread_num)) && (thread_num<cfg->Max_Thread_Num))       //Se il 90% dei thread sono impegnati, e non si è arrivati a MAX_THREAD_NUM, incrementa il pool
+		if ((countt<= (int) (0.1*thread_num)) && (thread_num<cfg->Max_Thread_Num))       //If 90% of the threads are busy, and MAX_THREAD_NUMBER hasn't been reached, increase the pool - Se il 90% dei thread sono impegnati, e non si è arrivati a MAX_THREAD_NUM, incrementa il pool
 		{
 			if (pthread_mutex_lock(&mtx_struct) < 0) {
 				perror("pthread_mutex_lock");

@@ -23,7 +23,7 @@ int callbackchk (void * res, int argc, char **argv, char **azColName)
 	return EXIT_SUCCESS;
 }
 
-int dbcontrol(sqlite3 *db, char *image, int flag)              //Controlla se "image" esiste nella tabella flag (0=imag, 1=orig) e restituisce 1 in caso affermativo, 0 in caso negativo
+int dbcontrol(sqlite3 *db, char *image, int flag)              //Control whether "image" exists in table 'flag' (0=imag, 1=orig) and return 1 if positive, 0 if negative. - Controlla se "image" esiste nella tabella flag (0=imag, 1=orig) e restituisce 1 in caso affermativo, 0 in caso negativo
 {
 	char *zErrMsg = 0;
 	char *dbcomm;
@@ -54,7 +54,7 @@ int dbcontrol(sqlite3 *db, char *image, int flag)              //Controlla se "i
 }
 
 
-int dbadd(sqlite3 *db, struct Record rd, int flag)                //Aggiunge allla tabella flag (0=imag, 1=orig) il record rd          
+int dbadd(sqlite3 *db, struct Record rd, int flag)                //Add to table 'flag' (0=imag, 1=orig) the record rd. - Aggiunge allla tabella flag (0=imag, 1=orig) il record rd          
 {
 	char *zErrMsg = 0;
 	char *dbcomm;
@@ -82,7 +82,7 @@ int dbadd(sqlite3 *db, struct Record rd, int flag)                //Aggiunge all
 	
 }
 
-int dbremove(sqlite3 *db, char *image, int flag)                 //Rimuove dallla tabella flag (0=imag, 1=orig) "image"
+int dbremove(sqlite3 *db, char *image, int flag)                 //Remove from table 'flag' (0=imag, 1=orig) "image". - Rimuove dallla tabella flag (0=imag, 1=orig) "image"
 {
 	char *zErrMsg = 0;
 	char *dbcomm;
@@ -119,7 +119,7 @@ int callbackremol (void * res, int argc, char **argv, char **azColName)
 }
 
 
-int dbremoveoldest(sqlite3 *db)                              //Rimuove dalla tabella imag il/i record a cui non si è acceduto da più tempo
+int dbremoveoldest(sqlite3 *db)                              //Remove from table 'imag' the least recently used record(s). -Rimuove dalla tabella imag il/i record a cui non si è acceduto da più tempo
 {
 	char *zErrMsg = 0;
 	char *dbcomm, *nameimm;
@@ -164,7 +164,7 @@ int callbackacc (void * res, int argc, char **argv, char **azColName)
 	return EXIT_SUCCESS;  
 }
 
-int dbcheck(sqlite3 *db, char *image, char *origimag )           //Chiama dbcontrol, aggiorna la data d'accesso/aggiunge il record su imag ed aggiorna il numero di accessi su orig
+int dbcheck(sqlite3 *db, char *image, char *origimag )           //Call dbcontrol, update the acces date/add the record on 'imag' and update the acces numer on 'orig'. -Chiama dbcontrol, aggiorna la data d'accesso/aggiunge il record su imag ed aggiorna il numero di accessi su orig
 {
 	char *zErrMsg = 0;
 	char *dbcomm;
@@ -234,7 +234,7 @@ int callbackcount (void * res, int argc, char **argv, char **azColName)
 	return EXIT_SUCCESS;  
 }
 
-int dbcount(sqlite3 *db, int flag)              //Restituisce il numero di record esistenti nella tabella flag (0=imag, 1=orig)
+int dbcount(sqlite3 *db, int flag)              //Return the number of existing record in 'flag' (0=imag, 1=orig) table. - Restituisce il numero di record esistenti nella tabella flag (0=imag, 1=orig)
 {
 	char *zErrMsg = 0;
 	char *dbcomm;
@@ -257,6 +257,49 @@ int dbcount(sqlite3 *db, int flag)              //Restituisce il numero di recor
 	snprintf(dbcomm, sizeof(char)*512, "SELECT count(*) FROM %s ", flags);
 	
 	if (sqlite3_exec(db, dbcomm, callbackcount, (void*)res, &zErrMsg)){
+		perror("error in sqlite_exec");
+		sqlite3_free(zErrMsg);
+		return EXIT_FAILURE;
+	}
+	return *res;
+}
+
+int callbacksel (void * res, int argc, char **argv, char **azColName)
+{
+	char * s=(char *)res;
+	snprintf(s, sizeof(char)*512, "%s %s %s", argv[0], argv[1], argv[2]);
+	return EXIT_SUCCESS;
+}
+
+char *dbselect(sqlite3 *db, char *image, int flag)      //Return the record of "image" from the table 'flag' (0=imag, 1=orig) - Restituisce il record di "image" dalla tabella 'flag' (0=imag, 1=orig)
+{
+	char *zErrMsg = 0;
+	char *dbcomm;
+	char *res;
+	char flags[6];
+	
+	if((dbcomm = malloc(sizeof(char)*512))==NULL)
+	{
+		perror ("Error in Malloc");
+		return (EXIT_FAILURE);
+	}
+	
+	if((res = malloc(sizeof(char)*512))==NULL)
+	{
+		perror ("Error in Malloc");
+		return (EXIT_FAILURE);
+	}
+	
+	if (flag==0) snprintf(flags, sizeof(char)*10, "imag");
+	else if (flag==1) snprintf(flags, sizeof(char)*10, "orig");
+	else {
+		fprintf(stderr, "Error in dbcontrol: wrong flag value");
+		exit(EXIT_FAILURE);
+	}
+	
+	snprintf(dbcomm, sizeof(char)*512, "SELECT (*) FROM %s WHERE name=%s", flags, image);
+	
+	if (sqlite3_exec(db, dbcomm, callbacksel, (void*)res, &zErrMsg)){
 		perror("error in sqlite_exec");
 		sqlite3_free(zErrMsg);
 		return EXIT_FAILURE;
