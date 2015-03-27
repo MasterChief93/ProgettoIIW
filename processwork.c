@@ -46,7 +46,7 @@ void *thread_work(void *arg) {
 			perror("pthread_mutex_lock");
 			exit(EXIT_FAILURE);  //dovrebbero essere pthread_exit
 		}
-		if (pthread_cond_wait(&cond_variable,&mtx_cond) < 0) {      //The thread sleeps until (one of them, casually) receives a signal - Il thread dorme finchè (uno, a caso) non riceve un segnale.
+		if (pthread_cond_wait(&cond_variable,&mtx_cond) != 0) {      //The thread sleeps until (one of them, casually) receives a signal - Il thread dorme finchè (uno, a caso) non riceve un segnale.
 			perror("pthread_cond_wait");
 			exit(EXIT_FAILURE);
 		}
@@ -85,7 +85,7 @@ void *thread_work(void *arg) {
 
 int Process_Work(int lsock, sem_t *sem, struct Config *cfg,  int fdl, sqlite3 *db)
 {
-	int i, error=0, connsd, thread_num, countt ;//, round=0;
+	int i, error=0, connsd, thread_num, countt;//, round=0;
 	socklen_t client_len;
 	struct sockaddr_in clientaddr;
 	pthread_t tid;                           //[MIN_THREAD_NUM];

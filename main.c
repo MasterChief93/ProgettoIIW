@@ -102,7 +102,7 @@ int main()
 			perror("Error in opening log.log");
 			return (EXIT_FAILURE);
 		}
-	
+	}
 	if (sqlite3_open("db/images.db", &db)){  //Open the conection to the database - Apre la connessione al database
 		perror("error in sqlite_open");
 		sqlite3_close(db);                    //In any case of server shutdown, close the db connection first - In ogni caso di chiusura del server, chiude anche la connessione al database 

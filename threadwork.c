@@ -5,6 +5,7 @@
 #include <string.h> 
 #include <errno.h>
 #include <fcntl.h>
+#include <pthread.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sqlite3.h>
@@ -16,6 +17,8 @@
 
 int Thread_Work(int connsd, int fdl, sqlite3 *db)
 {
+	printf("Sono entrato nel Thread Work! Sono il tid %lld\n",(long long int) pthread_self());
+	fflush(stdout);
 	ssize_t readn, writen;
 	
 	size_t nleft;
@@ -23,7 +26,7 @@ int Thread_Work(int connsd, int fdl, sqlite3 *db)
 	buff = malloc(sizeof(char) * BUFF_SIZE);
 	if (buff == NULL) {
 		perror("malloc");
-		exit(EXIT_FAILURE);
+		return EXIT_FAILURE;
 	}
 	char *ptr = buff;
 	/*if (fcntl(connsd, F_SETFL, O_NONBLOCK) == -1) {  		// set to non-blocking
@@ -32,6 +35,8 @@ int Thread_Work(int connsd, int fdl, sqlite3 *db)
 	}*/
 	errno = 0;
 	nleft = BUFF_SIZE;
+	printf("Sto entrando nel while!\n");
+	fflush(stdout);
 	while(nleft > 0) {
 		if ((readn = recv(connsd, ptr, nleft, MSG_DONTWAIT)) < 0) {
 			if (errno == EAGAIN || errno == EWOULDBLOCK) {
@@ -42,23 +47,46 @@ int Thread_Work(int connsd, int fdl, sqlite3 *db)
 				readn = 0;
 			else {
 				perror("read");
-				exit(EXIT_FAILURE);
+				return EXIT_FAILURE;
 			}
 		}
-		else if (readn == 0) break;
-		if (buff[strlen(buff)-1] == '\0') break;
+		else if (readn == 0) 
+			break;
+		
+		if (buff[strlen(buff)-1] == '\0') {
+			printf("Letto tutto!\n");
+			fflush(stdout);
+			break;
+		}
+		
 		nleft -= readn;
 		ptr += readn;
 	}
+	printf("Ho finito il while!\n");
+	fflush(stdout);
+	//printf("%s\n",buff);
+	//fflush(stdout);
 	if (buff[strlen(buff)-1] != '\0') {
-		buff[strlen(buff)-1] = 0;
+		printf("%s\n",buff);
+		fflush(stdout);
+		buff[strlen(buff)-1] = '\0';
 	}
+	errno = 0;
 	if (strlen(buff) < 1) {
 		perror("No string");
-		exit(EXIT_FAILURE);
-
+		if (shutdown(connsd,SHUT_RDWR) < 0) {
+			perror("shutdown");
+			return EXIT_FAILURE;
+		}
+		printf("Shutdown fatto\n");
+		fflush(stdout);
+		if (close(connsd) < 0) {
+			perror("close");
+			return EXIT_FAILURE;
+		}
+		return EXIT_FAILURE;
 	}
-	printf("Ho finito il while\n");
+	printf("Nessun errore fin qui\n");
 	fflush(stdout);
 	char *saveptr;
 	ptr = strtok_r(buff,"\r\n",&saveptr);
@@ -68,6 +96,12 @@ int Thread_Work(int connsd, int fdl, sqlite3 *db)
 	if (strcmp(ptr,"GET") == 0) {
 		printf("Bella zio\n");
 		fflush(stdout);
+		writen = send(connsd,"HTTP/1.1 405 Method Not Allowed\r\n\r\n",strlen("HTTP/1.1 405 Method Not Allowed\r\n\r\n"),MSG_DONTWAIT);
+
+		if (writen == 0) {
+			perror("write");
+			return EXIT_FAILURE;
+		}
 
 		//chiama funzione GET
 	}
@@ -83,7 +117,7 @@ int Thread_Work(int connsd, int fdl, sqlite3 *db)
 
 		if (writen == 0) {
 			perror("write");
-			exit(EXIT_FAILURE);
+			return EXIT_FAILURE;
 		}
 		printf("Ho scritto\n");
 		fflush(stdout);
@@ -92,13 +126,13 @@ int Thread_Work(int connsd, int fdl, sqlite3 *db)
 	fflush(stdout);
 	if (shutdown(connsd,SHUT_RDWR) < 0) {
 		perror("shutdown");
-		exit(EXIT_FAILURE);
+		return EXIT_FAILURE;
 	}
 	printf("Shutdown fatto\n");
 	fflush(stdout);
 	if (close(connsd) < 0) {
 		perror("close");
-		exit(EXIT_FAILURE);
+		return EXIT_FAILURE;
 	}
 	printf("Tutto fatto\n");
 	fflush(stdout);

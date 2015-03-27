@@ -200,7 +200,7 @@ int dbcheck(sqlite3 *db, char *image, char *origimag )           //Call dbcontro
 		return (EXIT_FAILURE);
 	}
 	
-	if (check = dbcontrol(db, image, 0) ==1)
+	if ((check = dbcontrol(db, image, 0)) ==1)
 	{
 		snprintf(dbcomm, sizeof(char)*512, "SELECT acc FROM imag WHERE name=%s",  image);
 	if (sqlite3_exec(db, dbcomm, callbackacc, acc, &zErrMsg)){
@@ -209,27 +209,27 @@ int dbcheck(sqlite3 *db, char *image, char *origimag )           //Call dbcontro
 		return EXIT_FAILURE;
 		}
 		
-		snprintf(dbcomm, sizeof(char)*512, "UPDATE imag SET date =datetime(), acc = %l  WHERE name= '%s'", *acc image);
+		snprintf(dbcomm, sizeof(char)*512, "UPDATE imag SET date =datetime(), acc = %long  WHERE name= '%s'", *acc, image);
 		if (sqlite3_exec(db, dbcomm, NULL, 0, &zErrMsg)){
 			perror("error in sqlite_exec");
 			sqlite3_free(zErrMsg);
 			return EXIT_FAILURE;
 		}
 	}
-	else if (check = dbcontrol(db, image, 0) ==1)
+	else if ((check = dbcontrol(db, image, 0)) ==1)
 	{
-		struct Record rd = {image, 0};
+		struct Record rd = {.name = image ,.acc = 0};
 		dbadd(db, rd, 0);
 	}
 	
-	snprintf(dbcomm, sizeof(char)*512, "SELECT acc FROM orig WHERE name=%s",  origimage);
+	snprintf(dbcomm, sizeof(char)*512, "SELECT acc FROM orig WHERE name=%s",  origimag);
 	if (sqlite3_exec(db, dbcomm, callbackacc, acc, &zErrMsg)){
 		perror("error in sqlite_exec");
 		sqlite3_free(zErrMsg);
 		return EXIT_FAILURE;
 	}
 	
-	snprintf(dbcomm, sizeof(char)*512, "UPDATE orig SET acc = %l WHERE name= '%s'", *acc, origimage);
+	snprintf(dbcomm, sizeof(char)*512, "UPDATE orig SET acc = %long WHERE name= '%s'", *acc, origimag);
 	if (sqlite3_exec(db, dbcomm, NULL, 0, &zErrMsg)){
 		perror("error in sqlite_exec");
 		sqlite3_free(zErrMsg);
