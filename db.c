@@ -31,7 +31,7 @@ int callbackchk (void * res, int argc, char **argv, char **azColName)
 	return EXIT_SUCCESS;
 }
 
-int dbcontrol(sqlite3 *db, char *image, int flag)              //Control whether "image" exists in table 'flag' (0=imag, 1=orig) and return 1 if positive, 0 if negative. - Controlla se "image" esiste nella tabella flag (0=imag, 1=orig) e restituisce 1 in caso affermativo, 0 in caso negativo
+int dbcontrol(sqlite3 *db, char *image, int flag)              //Control whether "image" exists in table 'flag' (0=imag, 1=orig, 2=page) and return 1 if positive, 0 if negative. - Controlla se "image" esiste nella tabella flag (0=imag, 1=orig, 2=page) e restituisce 1 in caso affermativo, 0 in caso negativo
 {
 	char *zErrMsg = 0;
 	char *dbcomm;
@@ -46,6 +46,7 @@ int dbcontrol(sqlite3 *db, char *image, int flag)              //Control whether
 	
 	if (flag==0) snprintf(flags, sizeof(char)*10, "imag");
 	else if (flag==1) snprintf(flags, sizeof(char)*10, "orig");
+	else if (flag==2) snprintf(flags, sizeof(char)*10, "page");
 	else {
 		fprintf(stderr, "Error in dbcontrol: wrong flag value");
 		exit(EXIT_FAILURE);
@@ -62,7 +63,7 @@ int dbcontrol(sqlite3 *db, char *image, int flag)              //Control whether
 }
 
 
-int dbadd(sqlite3 *db, struct Record rd, int flag)                //Add to table 'flag' (0=imag, 1=orig) the record rd. - Aggiunge allla tabella flag (0=imag, 1=orig) il record rd          
+int dbadd(sqlite3 *db, struct Record rd, int flag)                //Add to table 'flag' (0=imag, 1=orig, 2=page) the record rd. - Aggiunge allla tabella flag (0=imag, 1=orig, 2=page) il record rd          
 {
 	char *zErrMsg = 0;
 	char *dbcomm;
@@ -75,6 +76,7 @@ int dbadd(sqlite3 *db, struct Record rd, int flag)                //Add to table
 	
 	if (flag==0) snprintf(dbcomm, sizeof(char)*512, "INSERT INTO imag values('%s', datetime(), %long",  rd.name, rd.acc);
 	else if (flag==1) snprintf(dbcomm, sizeof(char)*512, "INSERT INTO orig values('%s', datetime(), %long",  rd.name, rd.acc);  //Non è normale...
+	else if (flag==2) snprintf(dbcomm, sizeof(char)*512, "INSERT INTO page values('%s', datetime(), %long",  rd.name, rd.acc);
 	else {
 		fprintf(stderr, "Error in dbadd: wrong flag value");
 		exit(EXIT_FAILURE);
@@ -90,7 +92,7 @@ int dbadd(sqlite3 *db, struct Record rd, int flag)                //Add to table
 	
 }
 
-int dbremove(sqlite3 *db, char *image, int flag)                 //Remove from table 'flag' (0=imag, 1=orig) "image". - Rimuove dallla tabella flag (0=imag, 1=orig) "image"
+int dbremove(sqlite3 *db, char *image, int flag)                 //Remove from table 'flag' (0=imag, 1=orig, 2=page) "image". - Rimuove dallla tabella flag (0=imag, 1=orig, 2=page) "image"
 {
 	char *zErrMsg = 0;
 	char *dbcomm;
@@ -103,6 +105,7 @@ int dbremove(sqlite3 *db, char *image, int flag)                 //Remove from t
 	
 	if (flag==0) snprintf(dbcomm, sizeof(char)*512, "DELETE FROM imag WHERE name='%s'", image);
 	else if (flag==1) snprintf(dbcomm, sizeof(char)*512, "DELETE FROM orig WHERE name='%s'", image);
+	else if (flag==2) snprintf(dbcomm, sizeof(char)*512, "DELETE FROM page WHERE name='%s'", image);
 	else {
 		fprintf(stderr, "Error in dbadd: wrong flag value");
 		exit(EXIT_FAILURE);
@@ -135,7 +138,7 @@ int callbackremol (void * res, int argc, char **argv, char **azColName)
 }
 
 
-int dbremoveoldest(sqlite3 *db)                              //Remove from table 'imag' the least recently used record(s). -Rimuove dalla tabella imag il/i record a cui non si è acceduto da più tempo
+int dbremoveoldest(sqlite3 *db)                              //Remove from tables 'imag'and 'page' the least recently used record(s). -Rimuove dalle tabelle 'imag' e 'page' il/i record a cui non si è acceduto da più tempo
 {
 	char *zErrMsg = 0;
 	char *dbcomm, *nameimm;
@@ -159,6 +162,15 @@ int dbremoveoldest(sqlite3 *db)                              //Remove from table
 	}
 	
 	dbremove(db, nameimm, 0);
+	
+	
+	if (sqlite3_exec(db, "SELECT name FROM page WHERE date = (SELECT min(date) FROM page)", callbackremol, nameimm, &zErrMsg)){
+		perror("error in sqlite_exec");
+		sqlite3_free(zErrMsg);
+		return EXIT_FAILURE;
+	}
+	
+	dbremove(db, nameimm, 2);
 	
 	return EXIT_SUCCESS;
 }
@@ -187,7 +199,7 @@ int callbackacc (void * res, int argc, char **argv, char **azColName)
 	return EXIT_SUCCESS;  
 }
 
-int dbcheck(sqlite3 *db, char *image, char *origimag )           //Call dbcontrol, update the acces date/add the record on 'imag' and update the acces numer on 'orig'. -Chiama dbcontrol, aggiorna la data d'accesso/aggiunge il record su imag ed aggiorna il numero di accessi su orig
+int dbcheck(sqlite3 *db, char *image, char *origimag )           //Call dbcontrol, update the acces date/add the record on 'imag'and 'page' and update the acces numer on 'orig'. -Chiama dbcontrol, aggiorna la data d'accesso/aggiunge il record su 'imag' e 'page' ed aggiorna il numero di accessi su 'orig'
 {
 	char *zErrMsg = 0;
 	char *dbcomm;
@@ -216,11 +228,34 @@ int dbcheck(sqlite3 *db, char *image, char *origimag )           //Call dbcontro
 			return EXIT_FAILURE;
 		}
 	}
-	else if ((check = dbcontrol(db, image, 0)) ==1)
+	else if ((check = dbcontrol(db, image, 0)) ==0)
 	{
 		struct Record rd = {.name = image ,.acc = 0};
 		dbadd(db, rd, 0);
 	}
+	
+	if ((check = dbcontrol(db, image, 2)) ==1)
+	{
+		snprintf(dbcomm, sizeof(char)*512, "SELECT acc FROM page WHERE name=%s",  image);
+	if (sqlite3_exec(db, dbcomm, callbackacc, acc, &zErrMsg)){
+		perror("error in sqlite_exec");
+		sqlite3_free(zErrMsg);
+		return EXIT_FAILURE;
+		}
+		
+		snprintf(dbcomm, sizeof(char)*512, "UPDATE page SET date =datetime(), acc = %long  WHERE name= '%s'", *acc, image);
+		if (sqlite3_exec(db, dbcomm, NULL, 0, &zErrMsg)){
+			perror("error in sqlite_exec");
+			sqlite3_free(zErrMsg);
+			return EXIT_FAILURE;
+		}
+	}
+	else if ((check = dbcontrol(db, image, 2)) ==0)
+	{
+		struct Record rd = {.name = image ,.acc = 0};
+		dbadd(db, rd, 2);
+	}
+	
 	
 	snprintf(dbcomm, sizeof(char)*512, "SELECT acc FROM orig WHERE name=%s",  origimag);
 	if (sqlite3_exec(db, dbcomm, callbackacc, acc, &zErrMsg)){
@@ -264,7 +299,7 @@ int callbackcount (void * res, int argc, char **argv, char **azColName)
 	return EXIT_SUCCESS;  
 }
 
-int dbcount(sqlite3 *db, int flag)              //Return the number of existing record in 'flag' (0=imag, 1=orig) table. - Restituisce il numero di record esistenti nella tabella flag (0=imag, 1=orig)
+int dbcount(sqlite3 *db, int flag)              //Return the number of existing record in 'flag' (0=imag, 1=orig, 2=page) table. - Restituisce il numero di record esistenti nella tabella flag (0=imag, 1=orig, 2=page)
 {
 	char *zErrMsg = 0;
 	char *dbcomm;
@@ -279,6 +314,7 @@ int dbcount(sqlite3 *db, int flag)              //Return the number of existing 
 	
 	if (flag==0) snprintf(flags, sizeof(char)*10, "imag");
 	else if (flag==1) snprintf(flags, sizeof(char)*10, "orig");
+	else if (flag==2) snprintf(flags, sizeof(char)*10, "page");
 	else {
 		fprintf(stderr, "Error in dbcontrol: wrong flag value");
 		exit(EXIT_FAILURE);
@@ -309,7 +345,7 @@ int callbacksel (void * res, int argc, char **argv, char **azColName)
 	return EXIT_SUCCESS;
 }
 
-char *dbselect(sqlite3 *db, char *image, int flag)      //Return the record of "image" from the table 'flag' (0=imag, 1=orig) - Restituisce il record di "image" dalla tabella 'flag' (0=imag, 1=orig)
+char *dbselect(sqlite3 *db, char *image, int flag)      //Return the record of "image" from the table 'flag' (0=imag, 1=orig, 2=page) - Restituisce il record di "image" dalla tabella 'flag' (0=imag, 1=orig, 2=page)
 {
 	char *zErrMsg = 0;
 	char *dbcomm;
@@ -330,6 +366,7 @@ char *dbselect(sqlite3 *db, char *image, int flag)      //Return the record of "
 	
 	if (flag==0) snprintf(flags, sizeof(char)*10, "imag");
 	else if (flag==1) snprintf(flags, sizeof(char)*10, "orig");
+	else if (flag==1) snprintf(flags, sizeof(char)*10, "page");
 	else {
 		fprintf(stderr, "Error in dbcontrol: wrong flag value");
 		exit(EXIT_FAILURE);
