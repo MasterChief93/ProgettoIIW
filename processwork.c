@@ -67,6 +67,7 @@ void *thread_work(void *arg) {
 			perror("pthread_mutex_unlock");
 			exit(EXIT_FAILURE);
 		}
+		printf("Il socket e: %d\n",connsd);
 		Thread_Work(connsd, fdl, db);
 		//Real_Work();             //Leggere richiesta e far partire funzione adatta (unica funzione nel nostro caso), presente su altro file (per modularità)
 		//Aggiornare Log
@@ -125,6 +126,7 @@ int Process_Work(int lsock, sem_t *sem, struct Config *cfg,  int fdl, sqlite3 *d
 		
 	i=0;
 	client_len = sizeof(clientaddr);                                         //Esiste la possibilità (remota) che vada all'interno del while
+	int value;
 	while (1==1)
 	{
 		//while (1==1)
@@ -132,7 +134,10 @@ int Process_Work(int lsock, sem_t *sem, struct Config *cfg,  int fdl, sqlite3 *d
 		if (sem_wait(sem) == -1) {
 			perror("sem_wait");
 			exit(EXIT_FAILURE);                                          //O permettiamo un certo numero di errori 
-		}                                                                //Andrà implementato un semaforo tra i processi per evitare l'effetto "Thundering Herd"
+		}                   
+		sem_getvalue(sem,&value);
+		printf("Ciao cicci sono in attesa %lld, %d\n", (long long int) getpid(), value);
+		fflush(stdout);                                             //Andrà implementato un semaforo tra i processi per evitare l'effetto "Thundering Herd"
 		if ((connsd = accept(lsock, (struct sockaddr*)&clientaddr,&client_len)) < 0)
 		{
 			perror("Error in accept");
@@ -143,13 +148,16 @@ int Process_Work(int lsock, sem_t *sem, struct Config *cfg,  int fdl, sqlite3 *d
 					perror("sem_post");                                  //Verficare se la chiusura improvvisa di un processo in questo punto non rende il semaforo inutilizzabile (posto a 0 con nessuno che possa incrementarlo)
 					exit(EXIT_FAILURE);
 				}
-				 exit (EXIT_FAILURE);  
+				 exit(EXIT_FAILURE);  
 			}                                                            //Too many failures, restart - Troppi fallimenti, ricomincia
 		}
 		if (sem_post(sem) == -1) {
 			perror("sem_post");                                          //Verficare se la chiusura improvvisa di un processo in questo punto non rende il semaforo inutilizzabile (posto a 0 con nessuno che possa incrementarlo)
 			exit(EXIT_FAILURE);
 		}
+		sem_getvalue(sem,&value);
+		printf("Ho rilasciato il semaforo (%lld) e il suo valore è %d\n",(long long int) getpid(), value);
+		fflush(stdout);
 		if (pthread_mutex_lock(&mtx_struct) < 0) {
 			perror("pthread_mutex_lock");
 			exit(EXIT_FAILURE);

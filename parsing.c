@@ -1,27 +1,24 @@
 #include <stdio.h>
 #include <wurfl.h>
 #include <device.h>
+#include <string.h>
 
 void wurfl_interrogation() {
 	const char* root = "wurfl.xml";
 	//const char* patches[] = NULL;
-	printf("Fatto");
-	fflush(stdout);
+
 	wurfl_t* wurfl = wurfl_init(root,NULL);
 	const char* user_agent = "Mozilla/5.0 (Linux; U; Android 3.1; xx-xx; GT-P7310 Build/HMJ37) AppleWebKit/534.13 (KHTML, like Gecko) Version/4.0 Safari/534.13";
-	printf("Fatto");
-	fflush(stdout);
+
 	device_t* device = wurfl_match(wurfl,user_agent);
-	printf("Fatto");
-	fflush(stdout);
 
 	char** capabilities = device_capabilities(device,NULL);
 	char** caps_ptr = capabilities;
 
-	printf("Fatto");
-	fflush(stdout);
 	while(caps_ptr!=NULL && *caps_ptr!=NULL) {
-		fprintf(stderr, "%s: %s,\n", *caps_ptr, *(caps_ptr + 1));
+		if (strcmp(*caps_ptr,"resolution_width") == 0 || strcmp(*caps_ptr,"resolution_height") == 0) {
+			fprintf(stderr, "%s: %s,\n", *caps_ptr, *(caps_ptr + 1));
+		}
 		caps_ptr+=2;
 	}
 	return;
