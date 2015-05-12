@@ -131,6 +131,16 @@ int main()
 		exit(EXIT_FAILURE);
 	}
 
+	struct timeval timeout;      
+    timeout.tv_sec = 10;
+    timeout.tv_usec = 0;
+
+	if (setsockopt (sock, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout,sizeof(timeout)) < 0) {
+		perror("Error in setsockopt");
+		sqlite3_close(db);
+		exit(EXIT_FAILURE);
+  	}
+
 	if(bind(sock, (struct sockaddr*)&servaddr, sizeof(servaddr))<0)
 	{
 		perror("Error in bind");
