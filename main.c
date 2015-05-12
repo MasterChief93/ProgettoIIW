@@ -125,22 +125,29 @@ int main()
 	servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
 	servaddr.sin_port=htons(cfg->Serv_Port);
 
-	if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &reuse,sizeof(int)) < 0) {        //To allow the reuse of the port in case of restart of the server - Per permettere il riuso della porta in caso di riavvio del server
+	if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(int)) < 0) {        //To allow the reuse of the port in case of restart of the server - Per permettere il riuso della porta in caso di riavvio del server
 		perror("Error in setsockopt");
 		sqlite3_close(db);
 		exit(EXIT_FAILURE);
 	}
-
+	/*
 	struct timeval timeout;      
-    timeout.tv_sec = 10;
+    timeout.tv_sec = 5;
     timeout.tv_usec = 0;
-
-	if (setsockopt (sock, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout,sizeof(timeout)) < 0) {
-		perror("Error in setsockopt");
-		sqlite3_close(db);
-		exit(EXIT_FAILURE);
-  	}
-
+	
+	if (setsockopt (sock, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(timeout)) < 0) {
+    	perror("setsockopt()");
+    	sqlite3_close(db);
+        exit(EXIT_FAILURE);
+    }
+	*/
+	int optval = 1;
+   	socklen_t optlen = sizeof(optval);
+   	if(setsockopt(sock, SOL_SOCKET, SO_KEEPALIVE, &optval, optlen) < 0) {
+    	perror("setsockopt()");
+    	sqlite3_close(db);
+        exit(EXIT_FAILURE);
+    }
 	if(bind(sock, (struct sockaddr*)&servaddr, sizeof(servaddr))<0)
 	{
 		perror("Error in bind");

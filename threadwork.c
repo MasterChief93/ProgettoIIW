@@ -17,27 +17,26 @@
 
 #define BUFF_SIZE 1024
 
-
-int shutdown_sequence(int connfd) {
-	if (shutdown(connfd,SHUT_RDWR) < 0) {
+int shutdown_sequence(int connsd) {
+	if (shutdown(connsd,SHUT_RDWR) < 0) {
 		perror("shutdown");
 		return EXIT_FAILURE;
 	}
 
-	if (close(connfd) < 0) {
+	if (close(connsd) < 0) {
 		perror("close");
 		return EXIT_FAILURE;
 	}
 	return EXIT_SUCCESS;
 }
 
-int Thread_Work(int connsd, int fdl, sqlite3 *db)
-{
+int Thread_Work(int connsd, int fdl, sqlite3 *db) {
 	//printf("Sono entrato nel Thread Work! Sono il tid %lld figlio di %lld\n",(long long int) pthread_self(), (long long int) getpid());
 	//fflush(stdout);
 
+
+	//READING SEQUENCE
 	for (;;) {
-		//READING SEQUENCE
 		ssize_t readn, writen;
 		size_t nleft;
 		char *buff;
@@ -80,6 +79,10 @@ int Thread_Work(int connsd, int fdl, sqlite3 *db)
 			nleft -= readn;
 			ptr += readn;
 		}
+		//printf("%s\n",buff);
+		//fflush(stdout);
+		printf("La lunghezza di buff e: %d\n",strlen(buff));
+		fflush(stdout);
 		if (buff[strlen(buff)-1] != '\0') {
 			buff[strlen(buff)-1] = '\0';
 		}
@@ -101,6 +104,8 @@ int Thread_Work(int connsd, int fdl, sqlite3 *db)
 
 		if (strcmp(method_name,"GET") == 0) {
 			if (strcmp(resource,"/favicon.ico") == 0) {
+				free(buff);
+				continue;
 			}
 			FILE *image = fopen("404.html","r");
 			char *type = "text/html";
@@ -120,8 +125,6 @@ int Thread_Work(int connsd, int fdl, sqlite3 *db)
 					return EXIT_FAILURE;
 				}
 				sprintf(path,".%s",resource);
-				printf("%s",path);
-				fflush(stdout);
 				image = fopen(path,"r");
 				if (image == NULL) {
 					perror("fopen");
@@ -157,8 +160,9 @@ int Thread_Work(int connsd, int fdl, sqlite3 *db)
 			while (n > 0) {
 				red = fread(data,1,n,image);
 				n -= red;
+				printf("%d %d\n",n,red);
+				fflush(stdout);
 			}
-
 			fclose(image);
 
 
@@ -212,6 +216,7 @@ int Thread_Work(int connsd, int fdl, sqlite3 *db)
 			//chiama funzione HEAD
 			}
 		else {
+
 			writen = send(connsd,"HTTP/1.1 405 Method Not Allowed\r\n\r\n",strlen("HTTP/1.1 405 Method Not Allowed\r\n\r\n"),MSG_DONTWAIT);
 
 			if (writen == 0) {
@@ -222,6 +227,7 @@ int Thread_Work(int connsd, int fdl, sqlite3 *db)
 			}
 
 		}
+		free(buff);
 	}
-	return (shutdown_sequence);
+	return shutdown_sequence(connsd);
 }
