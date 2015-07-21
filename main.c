@@ -153,24 +153,26 @@ int main()
 		sqlite3_close(db);
 		exit(EXIT_FAILURE);
 	}
-	/*
+/*
 	struct timeval timeout;      
-    timeout.tv_sec = 5;
+    timeout.tv_sec = 10;
     timeout.tv_usec = 0;
-	
-	if (setsockopt (sock, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(timeout)) < 0) {
-    	perror("setsockopt()");
-    	sqlite3_close(db);
-        exit(EXIT_FAILURE);
-    }
-	*/
+
+	if (setsockopt (sock, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout,sizeof(timeout)) < 0) {
+		perror("Error in setsockopt");
+		sqlite3_close(db);
+		exit(EXIT_FAILURE);
+  	}
+*/
+
 	int optval = 1;
-   	socklen_t optlen = sizeof(optval);
-   	if(setsockopt(sock, SOL_SOCKET, SO_KEEPALIVE, &optval, optlen) < 0) {
-    	perror("setsockopt()");
-    	sqlite3_close(db);
-        exit(EXIT_FAILURE);
-    }
+	socklen_t optlen = sizeof(optval);
+	if(setsockopt(sock, SOL_SOCKET, SO_KEEPALIVE, &optval, optlen) < 0) {
+		perror("setsockopt()");
+		sqlite3_close(db);
+		exit(EXIT_FAILURE);
+	}
+
 	if(bind(sock, (struct sockaddr*)&servaddr, sizeof(servaddr))<0)
 	{
 		perror("Error in bind");
