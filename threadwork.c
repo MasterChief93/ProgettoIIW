@@ -89,51 +89,65 @@ int Thread_Work(int connsd, int fdl, sqlite3 *db) {
 		errno = 0;
 		if (strlen(buff) < 1) {
 			perror("No string");
+			printf("Non ho piu nulla da leggere\n");
+			fflush(stdout);
 			free(buff);
 			shutdown_sequence(connsd);
 			return EXIT_FAILURE;
 		}
+		//FINE LETTURA RICHIESTA
 
-
+		//RICAVO LA RISORSA RICHIESTA
 		char *saveptr;
 		char *method_name;
 		char *resource;
 		ptr = strtok_r(buff,"\r\n",&saveptr);
 		method_name = strtok_r(ptr," ",&saveptr); //ptr will have the html method - ptr conterrà il metodo html
-		resource = strtok_r(NULL," ",&saveptr);
+		resource = strtok_r(NULL," ",&saveptr);  //resource will have the resource file name - resource contiene il nome della risorsa
 
 		if (strcmp(method_name,"GET") == 0) {
 			if (strcmp(resource,"/favicon.ico") == 0) {
-				free(buff);
-				continue;
+				free(buff); 
+				continue; //There is no favicon, so if the request is a GET of a favicon it will be ignored
 			}
-			FILE *image = fopen("404.html","r");
-			char *type = "text/html";
+
+			//If it is not, the deafult page will be opened
+			//These variables will be used in both cases
+			FILE *image = NULL;
+			char *type = NULL;
 			char *path;
 			path = malloc((strlen(resource) + 1)*sizeof(char));
-			if (path == NULL){
+			if (path == NULL) {
 				perror("malloc");
+				free(buff);
 				shutdown_sequence(connsd);
 				return EXIT_FAILURE;
 			}
-			if (strcmp(resource,"/") != 0) {
-				if (fclose(image) == -1) {
-					perror("closedwew");
-					free(buff);
-					free(path);
-					shutdown_sequence(connsd);
-					return EXIT_FAILURE;
-				}
-				sprintf(path,".%s",resource);
+
+			int flag = 0;
+			// In of a non-specific resource request
+			if (strcmp(resource,"/") == 0) {
+				image = fopen("default.html","r");
+				type = "text/html";
+				
+			}
+			// in case of a specific resource request
+			else {
+				sprintf(path,".%s",resource); // adding the dot in order to use fopen
 				image = fopen(path,"r");
-				if (image == NULL) {
-					perror("fopen");
-					free(buff);
-					free(path);
-					shutdown_sequence(connsd);
-					return EXIT_FAILURE;
-				}
 				type = "image/jpeg";
+				if (image == NULL) {
+					image = fopen("404.html","r");
+					type = "text/html";
+					flag = 1;
+					if (image == NULL) {  //If the opening of the 404.html page fails everything will be close
+						perror("fopen");
+						free(buff);
+						free(path);
+						shutdown_sequence(connsd);
+						return EXIT_FAILURE;
+					}
+				}
 			}
 
 			unsigned long fileLen;
@@ -167,7 +181,11 @@ int Thread_Work(int connsd, int fdl, sqlite3 *db) {
 
 
 			char *response;
-			response = malloc(sizeof(char)*(strlen(type)* + strlen("HTTP/1.1 200 OK\r\nContent-Type: %s\r\nContentLength: %d\r\n\r\n%s")));
+			if (flag == 0) {
+				response = malloc(sizeof(char)*(strlen(type)* + strlen("HTTP/1.1 200 OK\r\nContent-Type: %s\r\nContentLength: %d\r\n\r\n%s")));
+			} else {
+				response = malloc(sizeof(char)*(strlen(type)* + strlen("HTTP/1.1 404 Not Found\r\nContent-Type: %s\r\nContentLength: %d\r\n\r\n%s")));
+			}
 			if (response == NULL) {
 				perror("malloc");
 				free(response);
@@ -178,8 +196,11 @@ int Thread_Work(int connsd, int fdl, sqlite3 *db) {
 				return EXIT_FAILURE;
 			}
 
-		
-			sprintf(response,"HTTP/1.1 200 OK\r\nContent-Type: %s\r\nContentLength: %d\r\n\r\n",type,fileLen);
+			if (flag == 0) {
+				sprintf(response,"HTTP/1.1 200 OK\r\nContent-Type: %s\r\nContentLength: %d\r\n\r\n",type,fileLen);
+			} else {
+				sprintf(response,"HTTP/1.1 404 Not Found\r\nContent-Type: %s\r\nContentLength: %d\r\n\r\n",type,fileLen);
+			}
 		
 			writen = send(connsd,response,strlen(response),MSG_DONTWAIT);
 
