@@ -100,10 +100,10 @@ int Process_Work(int lsock, sem_t *sem, struct Config *cfg,  int fdl, sqlite3 *d
 	}
 
 	errno=0;	
-	if (tss == NULL) {
-		perror("malloc");
-		exit(EXIT_FAILURE);
-	}
+	//if (tss == NULL) {
+	//	perror("malloc");
+	//	exit(EXIT_FAILURE);
+	//}
 	
 	tss->conn_sd = -1;
 	tss->count = cfg->Min_Thread_Num; 								//prima o dopo?

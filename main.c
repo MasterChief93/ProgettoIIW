@@ -16,6 +16,7 @@
 #include <sys/ipc.h>
 #include <semaphore.h>
 #include <sqlite3.h>
+
 #include "processwork.h"     //Nostro
 #include "threadwork.h"
 #include "fileman.h"
@@ -39,10 +40,8 @@ void *garbage_collector(void *arg) {
 	struct Config *cfg;
 	db=data->db;
 	cfg=data->cfg;
-	
-	Garbage_Collector (db, cfg);
-	
-}
+	Garbage_Collector(db, cfg);
+ }
 
 int main()
 {
@@ -53,7 +52,14 @@ int main()
 	struct Config *cfg;
 	sqlite3 *db;
 	pthread_t tid;
-	
+
+	struct thread_struct *tss;    
+	         
+	if((tss = malloc(sizeof(struct thread_struct)))==NULL)
+	{
+		perror ("Error in Malloc");
+		return (EXIT_FAILURE);
+	}
 
 	if ((fde = open("error.log", O_CREAT | O_TRUNC | O_WRONLY, 0666)) == -1) {
 		perror("Error in opening error.log");
@@ -126,6 +132,9 @@ int main()
 		sqlite3_close(db);                    //In any case of server shutdown, close the db connection first - In ogni caso di chiusura del server, chiude anche la connessione al database 
 		return EXIT_FAILURE;
 	}
+	
+	tss->cfg = cfg;
+	tss->db = db;
 	
 	if (pthread_create(&tid,NULL,garbage_collector,tss) < 0) {             //Creates a Thread to keep under control the size of the cache - Crea un thread per mantenere sotto controllo la grandezza della cache
 			perror("pthread_create (Garbage Collector)");

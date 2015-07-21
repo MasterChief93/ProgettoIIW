@@ -106,13 +106,8 @@ int Thread_Work(int connsd, int fdl, sqlite3 *db)
 
 		if (strcmp(method_name,"GET") == 0) {
 			if (strcmp(resource,"/favicon.ico") == 0) {
-<<<<<<< HEAD
 				free(buff); 
 				continue; //There is no favicon, so if the request is a GET of a favicon it will be ignored
-=======
-				free(buff);
-				continue;				
->>>>>>> 87a0eea690bca0c842e0366acc463d8033074919
 			}
 
 			//If it is not, the deafult page will be opened

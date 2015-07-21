@@ -8,8 +8,8 @@ struct Config{
 	int Max_Thread_Num;               //Maximum number of thread per process - Massimo numero di Thread per processo
 	int Thread_Increment;             //How many threads to add every time the pool is found lacking - Quanti Thread aggiungere ogni volta che il pool risulta insufficiente
 	int Max_Error_Allowed;            //Maximum number of ignorable errors - Massimo numero di errori ignorabili
-	int Max_Cache_Size                //Maximum number of files that can be kept in the cache - Massimo numero di file che possono essere tenuti in cache
-	int Garbage_Collection_Frequence  //Time, in seconds, between two sweeps of the garbage collector (cache) - Tempo, in secondi, tra due passate del Garbage Collector (cache)
+	int Max_Cache_Size;                //Maximum number of files that can be kept in the cache - Massimo numero di file che possono essere tenuti in cache
+	int Garbage_Collection_Frequence;  //Time, in seconds, between two sweeps of the garbage collector (cache) - Tempo, in secondi, tra due passate del Garbage Collector (cache)
 };
 
 extern int Load_Config(int fdc, struct Config *cfg);          //Load in the program the values found in the config.ini file - Carica nel programma i valori trovati sul file config.ini
