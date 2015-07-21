@@ -31,7 +31,7 @@ int callbackchk (void * res, int argc, char **argv, char **azColName)
 	return EXIT_SUCCESS;
 }
 
-int dbcontrol(sqlite3 *db, char *image, int flag)              //Control whether "image" exists in table 'flag' (0=imag, 1=orig, 2=page) and return 1 if positive, 0 if negative. - Controlla se "image" esiste nella tabella flag (0=imag, 1=orig, 2=page) e restituisce 1 in caso affermativo, 0 in caso negativo
+int dbcontrol(sqlite3 *db, char *image, int flag)              //Controls whether "image" exists in table 'flag' (0=imag, 1=orig, 2=page) and returns 1 if positive, 0 if negative. - Controlla se "image" esiste nella tabella flag (0=imag, 1=orig, 2=page) e restituisce 1 in caso affermativo, 0 in caso negativo
 {
 	char *zErrMsg = 0;
 	char *dbcomm;
@@ -63,7 +63,7 @@ int dbcontrol(sqlite3 *db, char *image, int flag)              //Control whether
 }
 
 
-int dbadd(sqlite3 *db, struct Record rd, int flag)                //Add to table 'flag' (0=imag, 1=orig, 2=page) the record rd. - Aggiunge allla tabella flag (0=imag, 1=orig, 2=page) il record rd          
+int dbadd(sqlite3 *db, struct Record rd, int flag)                //Adds to table 'flag' (0=imag, 1=orig, 2=page) the record rd. - Aggiunge allla tabella flag (0=imag, 1=orig, 2=page) il record rd          
 {
 	char *zErrMsg = 0;
 	char *dbcomm;
@@ -92,7 +92,7 @@ int dbadd(sqlite3 *db, struct Record rd, int flag)                //Add to table
 	
 }
 
-int dbremove(sqlite3 *db, char *image, int flag)                 //Remove from table 'flag' (0=imag, 1=orig, 2=page) "image". - Rimuove dallla tabella flag (0=imag, 1=orig, 2=page) "image"
+int dbremove(sqlite3 *db, char *image, int flag)                 //Removes from table 'flag' (0=imag, 1=orig, 2=page) "image". - Rimuove dallla tabella flag (0=imag, 1=orig, 2=page) "image"
 {
 	char *zErrMsg = 0;
 	char *dbcomm;
@@ -138,10 +138,10 @@ int callbackremol (void * res, int argc, char **argv, char **azColName)
 }
 
 
-int dbremoveoldest(sqlite3 *db)                              //Remove from tables 'imag'and 'page' the least recently used record(s). -Rimuove dalle tabelle 'imag' e 'page' il/i record a cui non si è acceduto da più tempo
+int dbremoveoldest(sqlite3 *db)                              //Removes from tables 'imag'and 'page' the least recently used record(s). -Rimuove dalle tabelle 'imag' e 'page' il/i record a cui non si è acceduto da più tempo
 {
 	char *zErrMsg = 0;
-	char *dbcomm, *nameimm;
+	char *dbcomm, *nameimm, *filepath;
 	
 	if ((nameimm= malloc(sizeof(char)*512))==NULL)
 	{
@@ -162,6 +162,12 @@ int dbremoveoldest(sqlite3 *db)                              //Remove from table
 	}
 	
 	dbremove(db, nameimm, 0);
+	snprintf(filepath, sizeof(char)*512, "%s.jpg", nameimm);      //DA MODIFICARE: deve poter accettare tutte le estensioni
+	if (remove(filepath)!= 0) {
+		perror("error in image removal");
+		sqlite3_free(zErrMsg);
+		return EXIT_FAILURE;
+	}
 	
 	
 	if (sqlite3_exec(db, "SELECT name FROM page WHERE date = (SELECT min(date) FROM page)", callbackremol, nameimm, &zErrMsg)){
@@ -171,6 +177,12 @@ int dbremoveoldest(sqlite3 *db)                              //Remove from table
 	}
 	
 	dbremove(db, nameimm, 2);
+	snprintf(filepath, sizeof(char)*512, "%s.html", nameimm);
+	if (remove(filepath)!= 0) {
+		perror("error in page removal");
+		sqlite3_free(zErrMsg);
+		return EXIT_FAILURE;
+	}
 	
 	return EXIT_SUCCESS;
 }
@@ -199,7 +211,7 @@ int callbackacc (void * res, int argc, char **argv, char **azColName)
 	return EXIT_SUCCESS;  
 }
 
-int dbcheck(sqlite3 *db, char *image, char *origimag )           //Call dbcontrol, update the acces date/add the record on 'imag'and 'page' and update the acces numer on 'orig'. -Chiama dbcontrol, aggiorna la data d'accesso/aggiunge il record su 'imag' e 'page' ed aggiorna il numero di accessi su 'orig'
+int dbcheck(sqlite3 *db, char *image, char *origimag )           //Calls dbcontrol, updates the acces date/add the record on 'imag'and 'page' and updates the acces numer on 'orig'. -Chiama dbcontrol, aggiorna la data d'accesso/aggiunge il record su 'imag' e 'page' ed aggiorna il numero di accessi su 'orig'
 {
 	char *zErrMsg = 0;
 	char *dbcomm;
@@ -299,7 +311,7 @@ int callbackcount (void * res, int argc, char **argv, char **azColName)
 	return EXIT_SUCCESS;  
 }
 
-int dbcount(sqlite3 *db, int flag)              //Return the number of existing record in 'flag' (0=imag, 1=orig, 2=page) table. - Restituisce il numero di record esistenti nella tabella flag (0=imag, 1=orig, 2=page)
+int dbcount(sqlite3 *db, int flag)              //Returns the number of existing records in 'flag' (0=imag, 1=orig, 2=page) table. - Restituisce il numero di record esistenti nella tabella flag (0=imag, 1=orig, 2=page)
 {
 	char *zErrMsg = 0;
 	char *dbcomm;
@@ -345,7 +357,7 @@ int callbacksel (void * res, int argc, char **argv, char **azColName)
 	return EXIT_SUCCESS;
 }
 
-char *dbselect(sqlite3 *db, char *image, int flag)      //Return the record of "image" from the table 'flag' (0=imag, 1=orig, 2=page) - Restituisce il record di "image" dalla tabella 'flag' (0=imag, 1=orig, 2=page)
+char *dbselect(sqlite3 *db, char *image, int flag)      //Returns the record of "image" from the table 'flag' (0=imag, 1=orig, 2=page) - Restituisce il record di "image" dalla tabella 'flag' (0=imag, 1=orig, 2=page)
 {
 	char *zErrMsg = 0;
 	char *dbcomm;

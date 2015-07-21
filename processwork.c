@@ -31,7 +31,7 @@ pthread_cond_t cond_variable = PTHREAD_COND_INITIALIZER;
 struct thread_struct {
 	int conn_sd; 				   //Connection socket - Socket di connessione
 	int count;                     //Available thread counter - Contatore dei thread disponibili
-	int fdl;                       //Logging filoe - File di logging
+	int fdl;                       //Logging file - File di logging
 	sqlite3 *db;                   //Database Address - Indirizzo del database
 };
 

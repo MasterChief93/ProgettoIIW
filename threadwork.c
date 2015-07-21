@@ -17,6 +17,7 @@
 
 #define BUFF_SIZE 1024
 
+
 int shutdown_sequence(int connsd) {
 	if (shutdown(connsd,SHUT_RDWR) < 0) {
 		perror("shutdown");
@@ -30,10 +31,10 @@ int shutdown_sequence(int connsd) {
 	return EXIT_SUCCESS;
 }
 
-int Thread_Work(int connsd, int fdl, sqlite3 *db) {
+int Thread_Work(int connsd, int fdl, sqlite3 *db)
+{
 	//printf("Sono entrato nel Thread Work! Sono il tid %lld figlio di %lld\n",(long long int) pthread_self(), (long long int) getpid());
 	//fflush(stdout);
-
 
 	//READING SEQUENCE
 	for (;;) {
@@ -79,10 +80,8 @@ int Thread_Work(int connsd, int fdl, sqlite3 *db) {
 			nleft -= readn;
 			ptr += readn;
 		}
-		//printf("%s\n",buff);
-		//fflush(stdout);
 		printf("La lunghezza di buff e: %d\n",strlen(buff));
-		fflush(stdout);
+		fflush(stdout);		
 		if (buff[strlen(buff)-1] != '\0') {
 			buff[strlen(buff)-1] = '\0';
 		}
@@ -107,8 +106,13 @@ int Thread_Work(int connsd, int fdl, sqlite3 *db) {
 
 		if (strcmp(method_name,"GET") == 0) {
 			if (strcmp(resource,"/favicon.ico") == 0) {
+<<<<<<< HEAD
 				free(buff); 
 				continue; //There is no favicon, so if the request is a GET of a favicon it will be ignored
+=======
+				free(buff);
+				continue;				
+>>>>>>> 87a0eea690bca0c842e0366acc463d8033074919
 			}
 
 			//If it is not, the deafult page will be opened
@@ -177,6 +181,7 @@ int Thread_Work(int connsd, int fdl, sqlite3 *db) {
 				printf("%d %d\n",n,red);
 				fflush(stdout);
 			}
+
 			fclose(image);
 
 
@@ -237,7 +242,6 @@ int Thread_Work(int connsd, int fdl, sqlite3 *db) {
 			//chiama funzione HEAD
 			}
 		else {
-
 			writen = send(connsd,"HTTP/1.1 405 Method Not Allowed\r\n\r\n",strlen("HTTP/1.1 405 Method Not Allowed\r\n\r\n"),MSG_DONTWAIT);
 
 			if (writen == 0) {

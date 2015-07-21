@@ -20,12 +20,29 @@
 #include "threadwork.h"
 #include "fileman.h"
 #include "db.h"
+#include "garbage.h"
 
 /*
 #define SERV_PORT 5042
 #define MAX_PROLE_NUM 10    //Massimo numero processi concorrenti (oltre al padre). Si suppone che ogni processo si divida in thread.
 */
 
+struct thread_struct {
+	sqlite3 *db;                   //Database Address - Indirizzo del database
+	struct Config *cfg;            //Configurations - Configurazioni
+};
+
+
+void *garbage_collector(void *arg) {
+	struct thread_struct *data = (struct thread_struct *) arg;
+	sqlite3 *db;
+	struct Config *cfg;
+	db=data->db;
+	cfg=data->cfg;
+	
+	Garbage_Collector (db, cfg);
+	
+}
 
 int main()
 {
@@ -35,6 +52,7 @@ int main()
 	sem_t *semaphore;
 	struct Config *cfg;
 	sqlite3 *db;
+	pthread_t tid;
 	
 
 	if ((fde = open("error.log", O_CREAT | O_TRUNC | O_WRONLY, 0666)) == -1) {
@@ -76,7 +94,7 @@ int main()
 	}
 	
 	
-	if ((fdc = open("config.ini", O_CREAT | O_EXCL| O_RDWR, 0666)) == -1) {  //Create confug.ini, unless it already exists - Crea config.ini, a meno che già non esista
+	if ((fdc = open("config.ini", O_CREAT | O_EXCL| O_RDWR, 0666)) == -1) {  //Create config.ini, unless it already exists - Crea config.ini, a meno che già non esista
 		if ((fdc = open("config.ini", O_RDWR)) == -1) {                      // If config.ini already exists, open it - Se config.ini già esiste, aprilo
 			perror("Error in opening config.ini");
 			return (EXIT_FAILURE);
@@ -89,7 +107,7 @@ int main()
 	}
 	
 	else{
-		if (Set_Config_Default(fdc, cfg)==EXIT_FAILURE)                      //If the file didn't exists, initialize it to the default values - Se non esisteva, inizializza le voci ai valori di default
+		if (Set_Config_Default(fdc, cfg)==EXIT_FAILURE)                      //If the file doesn't exists, initialize it to the default values - Se non esisteva, inizializza le voci ai valori di default
 		{
 			perror("Error in creating config.ini . Try deleting it manually.");
 			return (EXIT_FAILURE);
@@ -108,6 +126,11 @@ int main()
 		sqlite3_close(db);                    //In any case of server shutdown, close the db connection first - In ogni caso di chiusura del server, chiude anche la connessione al database 
 		return EXIT_FAILURE;
 	}
+	
+	if (pthread_create(&tid,NULL,garbage_collector,tss) < 0) {             //Creates a Thread to keep under control the size of the cache - Crea un thread per mantenere sotto controllo la grandezza della cache
+			perror("pthread_create (Garbage Collector)");
+			exit(EXIT_FAILURE);
+		}
 
 	if ((sock = socket(AF_INET, SOCK_STREAM, 0)) <0) {  
 		perror("Error in socket");
@@ -130,24 +153,26 @@ int main()
 		sqlite3_close(db);
 		exit(EXIT_FAILURE);
 	}
-	/*
+/*
 	struct timeval timeout;      
-    timeout.tv_sec = 5;
+    timeout.tv_sec = 10;
     timeout.tv_usec = 0;
-	
-	if (setsockopt (sock, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(timeout)) < 0) {
-    	perror("setsockopt()");
-    	sqlite3_close(db);
-        exit(EXIT_FAILURE);
-    }
-	*/
+
+	if (setsockopt (sock, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout,sizeof(timeout)) < 0) {
+		perror("Error in setsockopt");
+		sqlite3_close(db);
+		exit(EXIT_FAILURE);
+  	}
+*/
+
 	int optval = 1;
-   	socklen_t optlen = sizeof(optval);
-   	if(setsockopt(sock, SOL_SOCKET, SO_KEEPALIVE, &optval, optlen) < 0) {
-    	perror("setsockopt()");
-    	sqlite3_close(db);
-        exit(EXIT_FAILURE);
-    }
+	socklen_t optlen = sizeof(optval);
+	if(setsockopt(sock, SOL_SOCKET, SO_KEEPALIVE, &optval, optlen) < 0) {
+		perror("setsockopt()");
+		sqlite3_close(db);
+		exit(EXIT_FAILURE);
+	}
+
 	if(bind(sock, (struct sockaddr*)&servaddr, sizeof(servaddr))<0)
 	{
 		perror("Error in bind");
@@ -198,9 +223,9 @@ int main()
 				continue;
 		}
 	}
-	//int status; volendo si può aggiungere lo stato per un reseconto più preciso
+	//int status; volendo si può aggiungere lo stato per un resoconto più preciso
 	
-	for (;;) {                                          // Whenever a process falls, another rises to get his place - Quando un processo cade, un altro viene creato per prenderne il posto
+	for (;;) {                                          // Whenever a process falls, another rises to take his place - Quando un processo cade, un altro viene creato per prenderne il posto
 		if ((wait(NULL)) != -1) {
 			switch (fork())
 			{
