@@ -162,12 +162,6 @@ int dbremoveoldest(sqlite3 *db)                              //Removes from tabl
 	}
 	
 	dbremove(db, nameimm, 0);
-	snprintf(filepath, sizeof(char)*512, "%s.jpg", nameimm);      //DA MODIFICARE: deve poter accettare tutte le estensioni
-	if (remove(filepath)!= 0) {
-		perror("error in image removal");
-		sqlite3_free(zErrMsg);
-		return EXIT_FAILURE;
-	}
 	
 	
 	if (sqlite3_exec(db, "SELECT name FROM page WHERE date = (SELECT min(date) FROM page)", callbackremol, nameimm, &zErrMsg)){
@@ -177,10 +171,10 @@ int dbremoveoldest(sqlite3 *db)                              //Removes from tabl
 	}
 	
 	dbremove(db, nameimm, 2);
-	snprintf(filepath, sizeof(char)*512, "%s.html", nameimm);
-	if (remove(filepath)!= 0) {
-		perror("error in page removal");
-		sqlite3_free(zErrMsg);
+	
+	snprintf(filepath, sizeof(char)*512, "/bin/rm %s.*", nameimm);       //Removes the files from the system - Rimuove i file dal sistema
+	if (system(filepath)==-1){
+		perror("error in system (rm)");                                  //NOTA: Se non dovesse funzionare, probabilmente andrà aggiunto ./ a nameimm
 		return EXIT_FAILURE;
 	}
 	

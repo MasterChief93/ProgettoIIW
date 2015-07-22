@@ -28,20 +28,6 @@
 #define MAX_PROLE_NUM 10    //Massimo numero processi concorrenti (oltre al padre). Si suppone che ogni processo si divida in thread.
 */
 
-struct thread_struct {
-	sqlite3 *db;                   //Database Address - Indirizzo del database
-	struct Config *cfg;            //Configurations - Configurazioni
-};
-
-
-void *garbage_collector(void *arg) {
-	struct thread_struct *data = (struct thread_struct *) arg;
-	sqlite3 *db;
-	struct Config *cfg;
-	db=data->db;
-	cfg=data->cfg;
-	Garbage_Collector(db, cfg);
- }
 
 int main()
 {
@@ -51,15 +37,7 @@ int main()
 	sem_t *semaphore;
 	struct Config *cfg;
 	sqlite3 *db;
-	pthread_t tid;
 
-	struct thread_struct *tss;    
-	         
-	if((tss = malloc(sizeof(struct thread_struct)))==NULL)
-	{
-		perror ("Error in Malloc");
-		return (EXIT_FAILURE);
-	}
 
 	if ((fde = open("error.log", O_CREAT | O_TRUNC | O_WRONLY, 0666)) == -1) {
 		perror("Error in opening error.log");
@@ -133,13 +111,19 @@ int main()
 		return EXIT_FAILURE;
 	}
 	
-	tss->cfg = cfg;
-	tss->db = db;
 	
-	if (pthread_create(&tid,NULL,garbage_collector,tss) < 0) {             //Creates a Thread to keep under control the size of the cache - Crea un thread per mantenere sotto controllo la grandezza della cache
-			perror("pthread_create (Garbage Collector)");
-			exit(EXIT_FAILURE);
-		}
+	switch (fork())                                                    //Creates a Process to keep under control the size of the cache - Crea un processo per mantenere sotto controllo la grandezza della cache
+			{
+				case -1:
+					perror("Error in fork");
+					sqlite3_close(db);
+					exit(EXIT_FAILURE);
+				case 0:
+					Garbage_Collector(db, cfg);
+				default:
+					continue;
+			}           
+			
 
 	if ((sock = socket(AF_INET, SOCK_STREAM, 0)) <0) {  
 		perror("Error in socket");
