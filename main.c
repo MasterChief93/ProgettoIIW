@@ -120,8 +120,6 @@ int main()
 					exit(EXIT_FAILURE);
 				case 0:
 					Garbage_Collector(db, cfg);
-				default:
-					continue;
 			}           
 			
 

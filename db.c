@@ -6,8 +6,10 @@
 #include <sqlite3.h>
 #include "db.h"
 
-int callbackchk (void * res, int argc, char **argv, char **azColName)
+int callbackchk (void *res, int argc, char **argv, char **azColName)
 {
+	printf("entro\n");
+	fflush(stdout);
 	long j;
 	char *endptr;
 	int *val = (int *) res;
@@ -18,16 +20,21 @@ int callbackchk (void * res, int argc, char **argv, char **azColName)
 		fprintf(stderr, "Unexpected number of columns");
 		return EXIT_FAILURE;
 	}  
-	
+
 	errno=0;
-	j=strtol(argv[0], &endptr, 0);
+	j = strtol(argv[0], &endptr, 0);
 	if (errno!=0)
 	{
 		perror("error in strtol");
 		return EXIT_FAILURE;
 	}  
-	if (j==0) *val=0;
-	else *val=1;
+
+	if (j == 0) {
+	 	*val = 0;
+	} else { 
+	 	*val = 1;
+	}
+
 	return EXIT_SUCCESS;
 }
 
@@ -38,23 +45,33 @@ int dbcontrol(sqlite3 *db, char *image, int flag)              //Controls whethe
 	int *res;
 	char flags[6];
 	
+
+
 	if((dbcomm = malloc(sizeof(char)*512))==NULL)
 	{
 		perror ("Error in Malloc");
 		return (EXIT_FAILURE);
 	}
-	
-	if (flag==0) snprintf(flags, sizeof(char)*10, "imag");
-	else if (flag==1) snprintf(flags, sizeof(char)*10, "orig");
-	else if (flag==2) snprintf(flags, sizeof(char)*10, "page");
+
+	if 		(flag==0) snprintf(flags, sizeof(char)*5, "imag");
+	else if (flag==1) snprintf(flags, sizeof(char)*5, "orig");
+	else if (flag==2) snprintf(flags, sizeof(char)*5, "page");
 	else {
 		fprintf(stderr, "Error in dbcontrol: wrong flag value");
 		exit(EXIT_FAILURE);
 	}
+
+	snprintf(dbcomm, sizeof(char)*512, "SELECT count(*) FROM %s WHERE name='%s'", flags, image);
 	
-	snprintf(dbcomm, sizeof(char)*512, "SELECT count(*) FROM %s WHERE name=%s", flags, image);
-	
-	if (sqlite3_exec(db, dbcomm, callbackchk, (void*)res, &zErrMsg)){
+	res = malloc(sizeof(int));
+	if (res == NULL) {
+		perror("malloc in db");
+		return EXIT_FAILURE;
+	}
+
+	if (sqlite3_exec(db, dbcomm, callbackchk, (void *)res, &zErrMsg)) {
+		printf("Errore!\n");
+		fflush(stdout);
 		perror("error in sqlite_exec");
 		sqlite3_free(zErrMsg);
 		return EXIT_FAILURE;

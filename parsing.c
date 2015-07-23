@@ -8,7 +8,7 @@ void wurfl_interrogation() {
 	//const char* patches[] = NULL;
 
 	wurfl_t* wurfl = wurfl_init(root,NULL);
-	const char* user_agent = "Mozilla/5.0 (Linux; U; Android 3.1; xx-xx; GT-P7310 Build/HMJ37) AppleWebKit/534.13 (KHTML, like Gecko) Version/4.0 Safari/534.13";
+	const char* user_agent = "Mozilla/5.0 (iPhone; CPU iPhone OS 6_0 like Mac OS X) AppleWebKit/536.26 (KHTML, like Gecko) Version/6.0 Mobile/10A5376e Safari/8536.25";
 
 	device_t* device = wurfl_match(wurfl,user_agent);
 
