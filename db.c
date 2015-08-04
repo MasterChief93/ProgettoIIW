@@ -72,7 +72,7 @@ int dbcontrol(sqlite3 *db, char *image, int flag)              //Controls whethe
 	if (sqlite3_exec(db, dbcomm, callbackchk, (void *)res, &zErrMsg)) {
 		printf("Errore!\n");
 		fflush(stdout);
-		perror("error in sqlite_exec");
+		perror("error in sqlite_execcontrol");
 		sqlite3_free(zErrMsg);
 		return EXIT_FAILURE;
 	}
@@ -91,16 +91,18 @@ int dbadd(sqlite3 *db, struct Record rd, int flag)                //Adds to tabl
 		return (EXIT_FAILURE);
 	}
 	
-	if (flag==0) snprintf(dbcomm, sizeof(char)*512, "INSERT INTO imag values('%s', datetime(), %long",  rd.name, rd.acc);
-	else if (flag==1) snprintf(dbcomm, sizeof(char)*512, "INSERT INTO orig values('%s', datetime(), %long",  rd.name, rd.acc);  //Non è normale...
-	else if (flag==2) snprintf(dbcomm, sizeof(char)*512, "INSERT INTO page values('%s', datetime(), %long",  rd.name, rd.acc);
+	if (flag==0) snprintf(dbcomm, sizeof(char)*512, "INSERT INTO imag values('%s', datetime(), %ld)",  rd.name, rd.acc);
+	else if (flag==1) snprintf(dbcomm, sizeof(char)*512, "INSERT INTO orig values('%s', datetime(), %ld)",  rd.name, rd.acc);  //Non è normale...
+	else if (flag==2) snprintf(dbcomm, sizeof(char)*512, "INSERT INTO page values('%s', datetime(), %ld)",  rd.name, rd.acc);
 	else {
 		fprintf(stderr, "Error in dbadd: wrong flag value");
 		exit(EXIT_FAILURE);
 	}
-	
+	printf("%s\n",dbcomm);
+	fflush(stdout);
+	errno = 0;
 	if (sqlite3_exec(db, dbcomm, NULL, 0, &zErrMsg)){
-		perror("error in sqlite_exec");
+		perror("error in sqlite_execcontrol2");
 		sqlite3_free(zErrMsg);
 		return EXIT_FAILURE;
 	}
@@ -200,7 +202,7 @@ int dbremoveoldest(sqlite3 *db)                              //Removes from tabl
 
 int callbackacc (void * res, int argc, char **argv, char **azColName)
 {
-	int *val=(int *) res;
+	long *val=(long *) res;
 	long j;
 	char *endptr;
 	(void) azColName;
@@ -227,7 +229,7 @@ int dbcheck(sqlite3 *db, char *image, char *origimag )           //Calls dbcontr
 	char *zErrMsg = 0;
 	char *dbcomm;
 	long *acc;
-	int check;
+	int check,check2;
 	
 	if((dbcomm = malloc(sizeof(char)*512))==NULL)
 	{
@@ -235,61 +237,70 @@ int dbcheck(sqlite3 *db, char *image, char *origimag )           //Calls dbcontr
 		return (EXIT_FAILURE);
 	}
 	
-	if ((check = dbcontrol(db, image, 0)) ==1)
-	{
-		snprintf(dbcomm, sizeof(char)*512, "SELECT acc FROM imag WHERE name=%s",  image);
-	if (sqlite3_exec(db, dbcomm, callbackacc, acc, &zErrMsg)){
-		perror("error in sqlite_exec");
-		sqlite3_free(zErrMsg);
+	acc = malloc(sizeof(long));
+	if (acc == NULL) {
+		perror("malloc in db");
 		return EXIT_FAILURE;
-		}
-		
-		snprintf(dbcomm, sizeof(char)*512, "UPDATE imag SET date =datetime(), acc = %long  WHERE name= '%s'", *acc, image);
-		if (sqlite3_exec(db, dbcomm, NULL, 0, &zErrMsg)){
-			perror("error in sqlite_exec");
-			sqlite3_free(zErrMsg);
-			return EXIT_FAILURE;
-		}
-	}
-	else if ((check = dbcontrol(db, image, 0)) ==0)
-	{
-		struct Record rd = {.name = image ,.acc = 0};
-		dbadd(db, rd, 0);
 	}
 	
-	if ((check = dbcontrol(db, image, 2)) ==1)
+	check = dbcontrol(db, image, 0);
+	if (check == 1)
 	{
-		snprintf(dbcomm, sizeof(char)*512, "SELECT acc FROM page WHERE name=%s",  image);
-	if (sqlite3_exec(db, dbcomm, callbackacc, acc, &zErrMsg)){
-		perror("error in sqlite_exec");
+		snprintf(dbcomm, sizeof(char)*512, "SELECT acc FROM imag WHERE name=%s",  image);
+	if (sqlite3_exec(db, dbcomm, callbackacc, (void *)acc, &zErrMsg)){
+		perror("error in sqlite_exec1");
 		sqlite3_free(zErrMsg);
 		return EXIT_FAILURE;
 		}
 		
-		snprintf(dbcomm, sizeof(char)*512, "UPDATE page SET date =datetime(), acc = %long  WHERE name= '%s'", *acc, image);
+		snprintf(dbcomm, sizeof(char)*512, "UPDATE imag SET date =datetime(), acc = %ld  WHERE name= '%s'", *acc, image);
 		if (sqlite3_exec(db, dbcomm, NULL, 0, &zErrMsg)){
-			perror("error in sqlite_exec");
+			perror("error in sqlite_exec2");
 			sqlite3_free(zErrMsg);
 			return EXIT_FAILURE;
 		}
 	}
-	else if ((check = dbcontrol(db, image, 2)) ==0)
+	else if (check ==0)
 	{
 		struct Record rd = {.name = image ,.acc = 0};
+		strcpy(rd.name,image);
+		dbadd(db, rd, 0);
+	}
+	check2 = dbcontrol(db, image, 2);
+	if (check2 == 1)
+	{
+		snprintf(dbcomm, sizeof(char)*512, "SELECT acc FROM page WHERE name=%s",  image);
+	if (sqlite3_exec(db, dbcomm, callbackacc, (void *)acc, &zErrMsg)){
+		perror("error in sqlite_exec3");
+		sqlite3_free(zErrMsg);
+		return EXIT_FAILURE;
+		}
+		
+		snprintf(dbcomm, sizeof(char)*512, "UPDATE page SET date =datetime(), acc = %ld  WHERE name= '%s'", *acc, image);
+		if (sqlite3_exec(db, dbcomm, NULL, 0, &zErrMsg)){
+			perror("error in sqlite_exec4");
+			sqlite3_free(zErrMsg);
+			return EXIT_FAILURE;
+		}
+	}
+	else if (check2 ==0)
+	{
+		struct Record rd = {.name = image ,.acc = 0};
+		strcpy(rd.name,image);
 		dbadd(db, rd, 2);
 	}
 	
-	
+
 	snprintf(dbcomm, sizeof(char)*512, "SELECT acc FROM orig WHERE name=%s",  origimag);
-	if (sqlite3_exec(db, dbcomm, callbackacc, acc, &zErrMsg)){
-		perror("error in sqlite_exec");
+	if (sqlite3_exec(db, dbcomm, callbackacc, (void *)acc, &zErrMsg)){
+		perror("error in sqlite_exec5");
 		sqlite3_free(zErrMsg);
 		return EXIT_FAILURE;
 	}
 	
-	snprintf(dbcomm, sizeof(char)*512, "UPDATE orig SET acc = %long WHERE name= '%s'", *acc, origimag);
+	snprintf(dbcomm, sizeof(char)*512, "UPDATE orig SET acc = %ld WHERE name= '%s'", *acc, origimag);
 	if (sqlite3_exec(db, dbcomm, NULL, 0, &zErrMsg)){
-		perror("error in sqlite_exec");
+		perror("error in sqlite_exec6");
 		sqlite3_free(zErrMsg);
 		return EXIT_FAILURE;
 	}

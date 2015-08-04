@@ -33,7 +33,7 @@ int shutdown_sequence(int connsd) {
 	return EXIT_SUCCESS;
 }
 
-int Thread_Work(int connsd, int fdl, sqlite3 *db)
+int Thread_Work(int connsd, int fdl, sqlite3 *db, char *orig, char *modif)
 {
 	//printf("Sono entrato nel Thread Work! Sono il tid %lld figlio di %lld\n",(long long int) pthread_self(), (long long int) getpid());
 	//fflush(stdout);
@@ -152,7 +152,9 @@ int Thread_Work(int connsd, int fdl, sqlite3 *db)
 		FILE *image = NULL;
 		char *type = NULL;
 		char *path;
-		path = malloc((strlen(resource) + 1)*sizeof(char));
+		printf("Ciao siamo qui %s\n",orig);
+		fflush(stdout);
+		path = malloc((256)*sizeof(char));
 		if (path == NULL) {
 			perror("malloc");
 			free(buff);
@@ -161,7 +163,8 @@ int Thread_Work(int connsd, int fdl, sqlite3 *db)
 		}
 
 		int flag = 0;
-
+		printf("Ciao siamo qui2\n");
+		fflush(stdout);
 		// In of a non-specific resource request
 
 		if (strcmp(resource,"/") == 0) {
@@ -170,10 +173,16 @@ int Thread_Work(int connsd, int fdl, sqlite3 *db)
 		}
 		// in case of a specific resource request
 		else {
-			sprintf(path,".%s",resource);			// adding the dot in order to use fopen
-			int ispresent = dbcontrol(db,path,1);
-			ispresent = 1;
-			if (ispresent == 0) { 		// if the image is not in the database 
+			//TODO il path immagine totale includerà il "punto (.)" iniziale, la cartella prelevata dal config e il nome dell'immagine specificato nella richiesta HTTP
+			printf("Qui ci siamo\n");
+			fflush(stdout);
+			sprintf(path,"%s%s",orig,resource);			// adding the dot in order to use fopen
+			printf("Anche qui %s\n",path);
+			fflush(stdout);
+			int ispresent = dbcontrol(db,resource,1);
+			printf("limmagine ce %d\n",ispresent);
+			fflush(stdout);
+			if (ispresent == 0) { 					// if the image is not in the database 
 				image = fopen("404.html","r");		// 404 error will be returned
 				type = "text/html";
 				flag = 1;
@@ -199,24 +208,65 @@ int Thread_Work(int connsd, int fdl, sqlite3 *db)
 				int width;
 				int height;
 				sscanf(resolution,"%d %d ",&width,&height);
-				//resizing(path,width,height);
-				if (dbcheck(db,"./rework/logo_resize.png",path) == 0){
-					resizing(path,width,height);
+				//resizing(image_name,width,height);
+				
+				char *n_image;
+				n_image = malloc(256*sizeof(char));
+				if (n_image == NULL) {
+					free(buff);
+					free(path);
+					shutdown_sequence(connsd);
+					return EXIT_FAILURE;
 				}
-				if (dbcheck(db,"./rework/logo_resize.png",path) == 1){
-					image = fopen(path,"r");
-					type = "image/jpeg";
-					if (image == NULL) {				// but if it is not on the disk
-						image = fopen("404.html","r");	// 404 will be returned
-						type = "text/html";
-						flag = 1;
-						if (image == NULL) {  			// If the opening of the 404.html page fails everything will be close
-							perror("fopen");
-							free(buff);
-							free(path);
-							shutdown_sequence(connsd);
-							return EXIT_FAILURE;
-						}
+				char *ext;
+				ext = malloc(5*sizeof(char));
+				if (ext == NULL) {
+					free(buff);
+					free(path);
+					shutdown_sequence(connsd);
+					return EXIT_FAILURE;
+				}
+				char *saveptr4;
+				n_image = strtok_r(resource,".",&saveptr4);
+				ext = strtok_r(NULL,".",&saveptr4);
+
+				char *new_path;
+				new_path = malloc((strlen(modif) + strlen(n_image) + 14)*sizeof(char));
+				if (new_path == NULL) {
+					free(buff);
+					free(path);
+					shutdown_sequence(connsd);
+					return EXIT_FAILURE;
+				}
+				char *new_image_name;
+				new_image_name = malloc((strlen(n_image) + 14)*sizeof(char));
+				if (new_image_name == NULL) {
+					free(buff);
+					free(path);
+					shutdown_sequence(connsd);
+					return EXIT_FAILURE;
+				}
+				sprintf(new_path,"%s%s_%d_%d.%s",modif,n_image,width,height,ext);
+				sprintf(new_image_name,"/%s_%d_%d.%s",n_image,width,height,ext);
+				int ischeck = dbcheck(db,new_path,resource);
+				printf("%d\n",ischeck);
+				fflush(stdout);
+				if (ischeck == 0){
+					resizing(path,new_path,width,height);
+				}
+				image = fopen(new_path,"r");
+				type = "image/jpeg";
+				if (image == NULL) {				// but if it is not on the disk
+					dbremove(db,new_path,0);		// I remove the image from the db
+					image = fopen("404.html","r");	// 404 will be returned
+					type = "text/html";
+					flag = 1;
+					if (image == NULL) {  			// If the opening of the 404.html page fails everything will be close
+						perror("fopen");
+						free(buff);
+						free(path);
+						shutdown_sequence(connsd);
+						return EXIT_FAILURE;
 					}
 				}
 				//if the image is on the database and on the disk

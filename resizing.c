@@ -7,8 +7,9 @@
 
 #include <stdio.h>
 #include <wand/magick_wand.h>
+#include "fileman.h"
 
-int resizing(const char *image_path,int width,int height)
+int resizing(const char *image_name,const char *new_image_path,int width,int height)
 {
 	MagickWand *m_wand = NULL;
 	
@@ -19,7 +20,7 @@ int resizing(const char *image_path,int width,int height)
 	m_wand = NewMagickWand();
 	// Read the image - all you need to do is change "logo:" to some other
 	// filename to have this resize and, if necessary, convert a different file
-	MagickReadImage(m_wand,image_path);
+	MagickReadImage(m_wand,image_name);
 	
 	// Get the image's width and height
 	old_width = MagickGetImageWidth(m_wand);
@@ -39,8 +40,9 @@ int resizing(const char *image_path,int width,int height)
 	// Set the compression quality to 95 (high quality = low compression)
 	MagickSetImageCompressionQuality(m_wand,95);
 	
-	/* Write the new image */
-	MagickWriteImage(m_wand,"./rework/logo_resize.jpg");
+	/* Writethe new image */
+
+	MagickWriteImage(m_wand,new_image_path);
 	
 	/* Clean up */
 	if(m_wand)m_wand = DestroyMagickWand(m_wand);

@@ -20,7 +20,9 @@ int Set_Config_Default(int fdc, struct Config *cfg)  //Creates the config.ini fi
 		.Thread_Increment = 5,
 		.Max_Error_Allowed = 5,
 		.Max_Cache_Size = 20,
-		.Garbage_Collection_Frequence = 120};
+		.Garbage_Collection_Frequence = 120,
+		.Orig_Path = "./orig",               //Probabile errore         
+		.Modified_Path = "./modif"};
 		
 	
 	errno=0;
@@ -39,6 +41,8 @@ int Set_Config_Default(int fdc, struct Config *cfg)  //Creates the config.ini fi
 	cfg->Max_Error_Allowed=Default.Max_Error_Allowed;
 	cfg->Max_Cache_Size=Default.Max_Cache_Size;
 	cfg->Garbage_Collection_Frequence=Default.Garbage_Collection_Frequence;
+	cfg->Orig_Path=Default.Orig_Path;
+	cfg->Modified_Path=Default.Modified_Path;
 	
 	
 	//Stampa su File
@@ -86,6 +90,18 @@ int Set_Config_Default(int fdc, struct Config *cfg)  //Creates the config.ini fi
 	}
 	
 	if (fprintf(streamc, "%d Garbage_Collection_Frequence    //Time, in seconds, between two sweeps of the garbage collector\n", cfg->Garbage_Collection_Frequence )<0)
+	{
+		fprintf(stderr, "Error in writing default Config on file\n");
+		return EXIT_FAILURE;
+	}
+	
+	if (fprintf(streamc, "%s Orig_Path                  //Where are the original images - Dove sono le immagini originali\n", cfg->Orig_Path )<0)
+	{
+		fprintf(stderr, "Error in writing default Config on file\n");
+		return EXIT_FAILURE;
+	}
+	
+	if (fprintf(streamc, "%s Modified_Path              //Where are the modified images and html pages - Dove sono le pagine html e le immagini modificate\n", cfg->Modified_Path )<0)
 	{
 		fprintf(stderr, "Error in writing default Config on file\n");
 		return EXIT_FAILURE;
@@ -235,6 +251,40 @@ int Load_Config(int fdc, struct Config *cfg)  //Load in the program the values f
 	}
 	
 	if (fscanf(streamc, "%d", &(cfg->Garbage_Collection_Frequence))!=1)
+	{
+		fprintf(stderr, "Error in reading Config from file\n");
+		return EXIT_FAILURE;
+	}
+	
+	if (fgets(temp, 1024*sizeof(char), streamc)==NULL)
+	{
+		fprintf(stderr, "Error in reading Config from file\n");
+		return EXIT_FAILURE;
+	}
+	if (feof(streamc)!=0)
+	{
+		fprintf(stderr, "Error in reading Config from file: unexpected EOF\n");
+		return EXIT_FAILURE;
+	}
+	
+	if (fscanf(streamc, "%s", &(cfg->Orig_Path))!=1)
+	{
+		fprintf(stderr, "Error in reading Config from file\n");
+		return EXIT_FAILURE;
+	}
+	
+	if (fgets(temp, 1024*sizeof(char), streamc)==NULL)
+	{
+		fprintf(stderr, "Error in reading Config from file\n");
+		return EXIT_FAILURE;
+	}
+	if (feof(streamc)!=0)
+	{
+		fprintf(stderr, "Error in reading Config from file: unexpected EOF\n");
+		return EXIT_FAILURE;
+	}
+	
+	if (fscanf(streamc, "%s", &(cfg->Modified_Path))!=1)
 	{
 		fprintf(stderr, "Error in reading Config from file\n");
 		return EXIT_FAILURE;

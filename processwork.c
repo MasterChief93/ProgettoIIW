@@ -33,11 +33,15 @@ struct thread_struct {
 	int count;                     //Available thread counter - Contatore dei thread disponibili
 	int fdl;                       //Logging file - File di logging
 	sqlite3 *db;                   //Database Address - Indirizzo del database
+	char *orig;
+	char *modif;
 };
 
 void *thread_work(void *arg) {
 	struct thread_struct *data = (struct thread_struct *) arg;
 	int connsd, fdl;
+	char *orig;
+	char *modif;
 	sqlite3 *db;
 	printf("Sono un thread!\n");
 	fflush(stdout);
@@ -62,13 +66,15 @@ void *thread_work(void *arg) {
 		data->count -= 1;
 		fdl= data->fdl;
 		db=data->db;
-		
+		orig = "./orig";//data->orig;
+		modif = "./modif";//data->modif;
+
 		if (pthread_mutex_unlock(&mtx_struct) < 0) {
 			perror("pthread_mutex_unlock");
 			exit(EXIT_FAILURE);
 		}
 		printf("Il socket e: %d\n",connsd);
-		Thread_Work(connsd, fdl, db);
+		Thread_Work(connsd, fdl, db, orig, modif);
 		//Real_Work();             //Leggere richiesta e far partire funzione adatta (unica funzione nel nostro caso), presente su altro file (per modularità)
 		//Aggiornare Log
 		if (pthread_mutex_lock(&mtx_struct) < 0) {
@@ -109,6 +115,8 @@ int Process_Work(int lsock, sem_t *sem, struct Config *cfg,  int fdl, sqlite3 *d
 	tss->count = cfg->Min_Thread_Num; 								//prima o dopo?
 	tss->fdl = fdl;
 	tss->db = db;
+	tss->orig = cfg->Orig_Path;
+	tss->modif = cfg->Modified_Path;
 
 	for(i = 0; i < cfg->Min_Thread_Num; i++) {   //Prethreading - Prethreading
 		if (pthread_create(&tid,NULL,thread_work,tss) < 0) {
