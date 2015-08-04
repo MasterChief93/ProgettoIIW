@@ -14,6 +14,8 @@
 #include "threadwork.h"    //Nostro
 #include "processwork.h"
 #include "db.h"
+#include "parsing.h"
+#include "resizing.h"
 
 #define BUFF_SIZE 1024
 
@@ -169,7 +171,9 @@ int Thread_Work(int connsd, int fdl, sqlite3 *db)
 		// in case of a specific resource request
 		else {
 			sprintf(path,".%s",resource);			// adding the dot in order to use fopen
-			if (dbcontrol(db,path,1) == 0) { 		// if the image is not in the database
+			int ispresent = dbcontrol(db,path,1);
+			ispresent = 1;
+			if (ispresent == 0) { 		// if the image is not in the database 
 				image = fopen("404.html","r");		// 404 error will be returned
 				type = "text/html";
 				flag = 1;
@@ -181,23 +185,43 @@ int Thread_Work(int connsd, int fdl, sqlite3 *db)
 					return EXIT_FAILURE;
 				}
 			} else {                            	// if the image is one the database
+				char *resolution;
+				resolution = malloc(128*sizeof(char));
+				if (resolution == NULL) {
+					free(buff);
+					free(path);
+					shutdown_sequence(connsd);
+					return EXIT_FAILURE;
+				}
+				wurfl_interrogation(user_agent, resolution);
 				//CONTROLLO A CHE RISOLUZIONE E RICHIESTA
 				// CONTROLLO SE GIA ESISTE A QUELLA RISOLUZIONE con dbcheck (Se non c'è la inserisce da solo) 0 se non c'è (modifico con image magick) o 1 se c'è (e vado diretto al percorso delle pagine)
-				image = fopen(path,"r");
-				type = "image/jpeg";
-				if (image == NULL) {				// but if it is not on the disk
-					image = fopen("404.html","r");	// 404 will be returned
-					type = "text/html";
-					flag = 1;
-					if (image == NULL) {  			// If the opening of the 404.html page fails everything will be close
-						perror("fopen");
-						free(buff);
-						free(path);
-						shutdown_sequence(connsd);
-						return EXIT_FAILURE;
+				int width;
+				int height;
+				sscanf(resolution,"%d %d ",&width,&height);
+				//resizing(path,width,height);
+				if (dbcheck(db,"./rework/logo_resize.png",path) == 0){
+					resizing(path,width,height);
+				}
+				if (dbcheck(db,"./rework/logo_resize.png",path) == 1){
+					image = fopen(path,"r");
+					type = "image/jpeg";
+					if (image == NULL) {				// but if it is not on the disk
+						image = fopen("404.html","r");	// 404 will be returned
+						type = "text/html";
+						flag = 1;
+						if (image == NULL) {  			// If the opening of the 404.html page fails everything will be close
+							perror("fopen");
+							free(buff);
+							free(path);
+							shutdown_sequence(connsd);
+							return EXIT_FAILURE;
+						}
 					}
 				}
 				//if the image is on the database and on the disk
+				printf("procediamo\n");
+				fflush(stdout);
 			}
 		}
 

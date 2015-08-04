@@ -8,27 +8,27 @@
 #include <stdio.h>
 #include <wand/magick_wand.h>
 
-int main()
+int resizing(const char *image_path,int width,int height)
 {
 	MagickWand *m_wand = NULL;
 	
-	int width,height;
+	int old_width, old_height;
 	
 	MagickWandGenesis();
 	
 	m_wand = NewMagickWand();
 	// Read the image - all you need to do is change "logo:" to some other
 	// filename to have this resize and, if necessary, convert a different file
-	MagickReadImage(m_wand,"7700072_orig.jpg");
+	MagickReadImage(m_wand,image_path);
 	
 	// Get the image's width and height
-	width = MagickGetImageWidth(m_wand);
-	height = MagickGetImageHeight(m_wand);
-	printf("%d %d", width /= 2,height);	
+	old_width = MagickGetImageWidth(m_wand);
+	old_height = MagickGetImageHeight(m_wand);
+	// printf("%d %d", width /= 2,height);	
 
 	// Cut them in half but make sure they don't underflow
-	if(width > 250) width = 250;
-	if(height > 300) height = 300;
+	//if(width > 250) width = 250;
+	//if(height > 300) height = 300;
 	
 	// Resize the image using the Lanczos filter
 	// The blur factor is a "double", where > 1 is blurry, < 1 is sharp
@@ -40,7 +40,7 @@ int main()
 	MagickSetImageCompressionQuality(m_wand,95);
 	
 	/* Write the new image */
-	MagickWriteImage(m_wand,"logo_resize.jpg");
+	MagickWriteImage(m_wand,"./rework/logo_resize.jpg");
 	
 	/* Clean up */
 	if(m_wand)m_wand = DestroyMagickWand(m_wand);
