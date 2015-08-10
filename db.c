@@ -94,8 +94,10 @@ int dbadd(sqlite3 *db, struct Record rd, int flag)                //Adds to tabl
 		fprintf(stderr, "Error in dbadd: wrong flag value");
 		exit(EXIT_FAILURE);
 	}
+	/*
 	printf("%s\n",dbcomm);
 	fflush(stdout);
+	 */
 	errno = 0;
 	if (sqlite3_exec(db, dbcomm, NULL, 0, &zErrMsg)){
 		perror("error in sqlite_execcontrol2");
@@ -159,6 +161,12 @@ int dbremoveoldest(sqlite3 *db)                              //Removes from tabl
 	char *dbcomm, *nameimm, *filepath;
 	
 	if ((nameimm= malloc(sizeof(char)*512))==NULL)
+	{
+		perror ("Error in Malloc");
+		return (EXIT_FAILURE);
+	}
+	
+	if((filepath = malloc(sizeof(char)*512))==NULL)
 	{
 		perror ("Error in Malloc");
 		return (EXIT_FAILURE);
@@ -343,6 +351,12 @@ int dbcount(sqlite3 *db, int flag)              //Returns the number of existing
 		return (EXIT_FAILURE);
 	}
 	
+	if((res = malloc(sizeof(int)))==NULL)
+	{
+		perror ("Error in Malloc");
+		return (EXIT_FAILURE);
+	}
+	
 	if (flag==0) snprintf(flags, sizeof(char)*10, "imag");
 	else if (flag==1) snprintf(flags, sizeof(char)*10, "orig");
 	else if (flag==2) snprintf(flags, sizeof(char)*10, "page");
@@ -410,6 +424,91 @@ char *dbselect(sqlite3 *db, char *image, int flag)      //Returns the record of 
 		sqlite3_free(zErrMsg);
 		return EXIT_FAILURE;
 	}
-	return *res;
+	return res;
+}
+
+int callbackfUA (void * res, int argc, char **argv, char **azColName)
+{
+	(void) azColName;
+	long j;
+	char *endptr;
+	
+	
+	if (argc!=2)
+	{
+		fprintf(stderr, "Unexpected number of columns");
+		return EXIT_FAILURE;
+	} 
+	
+	j = strtol(argv[0], &endptr, 0);
+	if (errno!=0)
+	{
+		perror("error in strtol");
+		return EXIT_FAILURE;
+	}  
+
+	if (j == 0) {
+		char * s=(char *)res;
+		s = NULL;
+		return EXIT_SUCCESS;
+	}
+	
+	char * s=(char *)res;
+	snprintf(s, sizeof(char)*512, "%s",  argv[1]);
+	return EXIT_SUCCESS;
+}
+
+char *dbfindUA (sqlite3 *db, char *UA)      //Return the maximum resolution supported by the User Agent - Restituisce la massima risoluzione supportata dall' User Agent.
+{
+	char *zErrMsg = 0;
+	char *dbcomm;
+	char *res;
+	
+	if((dbcomm = malloc(sizeof(char)*512))==NULL)
+	{
+		perror ("Error in Malloc");
+		return (EXIT_FAILURE);
+	}
+	
+	if((res = malloc(sizeof(char)*512))==NULL)
+	{
+		perror ("Error in Malloc");
+		return (EXIT_FAILURE);
+	}
+	
+	snprintf(dbcomm, sizeof(char)*512, "SELECT resolution FROM user_agent WHERE name='%s'",  UA);
+	
+	if (sqlite3_exec(db, dbcomm, callbackfUA, (void*)res, &zErrMsg)){
+		perror("error in sqlite_exec");
+		sqlite3_free(zErrMsg);
+		return EXIT_FAILURE;
+	}
+	return res;
+}
+
+int dbaddUA (sqlite3 *db, char *UA, char *res)         //Add a User Agent and its  supported maximum resolution to the database - Aggiunge un User Agent e la sua risoluzione massima supportata al database.
+{
+	char *zErrMsg = 0;
+	char *dbcomm;
+	
+	if((dbcomm = malloc(sizeof(char)*512))==NULL)
+	{
+		perror ("Error in Malloc");
+		return (EXIT_FAILURE);
+	}
+	
+	snprintf(dbcomm, sizeof(char)*512, "INSERT INTO user_agent values(%s,  %s)",  UA, res);
+	/*
+	printf("%s\n",dbcomm);
+	fflush(stdout);
+	 */
+	errno = 0;
+	if (sqlite3_exec(db, dbcomm, NULL, 0, &zErrMsg)){
+		perror("error in sqlite_execcontrol2");
+		sqlite3_free(zErrMsg);
+		return EXIT_FAILURE;
+	}
+	
+	return EXIT_SUCCESS;
 }
 

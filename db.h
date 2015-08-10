@@ -14,4 +14,6 @@ extern int dbremoveoldest(sqlite3 *db);                          //Remove from t
 extern int dbcheck(sqlite3 *db, char *image, char* origimag);    //Call dbcontrol, update the acces date/add the record on 'imag'and 'page' and update the acces numer on 'orig'. -Chiama dbcontrol, aggiorna la data d'accesso/aggiunge il record su 'imag' e 'page' ed aggiorna il numero di accessi su 'orig'
 extern int dbcount(sqlite3 *db, int flag);                       //Return the number of existing record in 'flag' (0=imag, 1=orig, 2=page) table. -Restituisce il numero di record esistenti nella tabella flag (0=imag, 1=orig, 2=page)
 extern char *dbselect(sqlite3 *db, char *image, int flag);      //Return the record of "image" from the table 'flag' (0=imag, 1=orig, 2=page) - Restituisce il record di "image" dalla tabella 'flag' (0=imag, 1=orig, 2=page)
+extern char *dbfindUA (sqlite3 *db, char *UA);      //Return the maximum resolution supported by the User Agent - Restituisce la massima risoluzione supportata dall' User Agent.
+extern int dbaddUA (sqlite3 *db, char *UA, char *res);         //Add a User Agent and its  supported maximum resolution to the database - Aggiunge un User Agent e la sua risoluzione massima supportata al database.
 #endif
