@@ -400,13 +400,13 @@ char *dbselect(sqlite3 *db, char *image, int flag)      //Returns the record of 
 	if((dbcomm = malloc(sizeof(char)*512))==NULL)
 	{
 		perror ("Error in Malloc");
-		return (EXIT_FAILURE);
+		return NULL;
 	}
 	
 	if((res = malloc(sizeof(char)*512))==NULL)
 	{
 		perror ("Error in Malloc");
-		return (EXIT_FAILURE);
+		return NULL;
 	}
 	
 	if (flag==0) snprintf(flags, sizeof(char)*10, "imag");
@@ -422,7 +422,7 @@ char *dbselect(sqlite3 *db, char *image, int flag)      //Returns the record of 
 	if (sqlite3_exec(db, dbcomm, callbacksel, (void*)res, &zErrMsg)){
 		perror("error in sqlite_exec");
 		sqlite3_free(zErrMsg);
-		return EXIT_FAILURE;
+		return NULL;
 	}
 	return res;
 }
@@ -449,7 +449,7 @@ int callbackfUA (void * res, int argc, char **argv, char **azColName)
 
 	if (j == 0) {
 		char * s=(char *)res;
-		s = NULL;
+		*s = NULL;
 		return EXIT_SUCCESS;
 	}
 	
@@ -467,13 +467,13 @@ char *dbfindUA (sqlite3 *db, char *UA)      //Return the maximum resolution supp
 	if((dbcomm = malloc(sizeof(char)*512))==NULL)
 	{
 		perror ("Error in Malloc");
-		return (EXIT_FAILURE);
+		return NULL;
 	}
 	
 	if((res = malloc(sizeof(char)*512))==NULL)
 	{
 		perror ("Error in Malloc");
-		return (EXIT_FAILURE);
+		return NULL;
 	}
 	
 	snprintf(dbcomm, sizeof(char)*512, "SELECT resolution FROM user_agent WHERE name='%s'",  UA);
@@ -481,7 +481,7 @@ char *dbfindUA (sqlite3 *db, char *UA)      //Return the maximum resolution supp
 	if (sqlite3_exec(db, dbcomm, callbackfUA, (void*)res, &zErrMsg)){
 		perror("error in sqlite_exec");
 		sqlite3_free(zErrMsg);
-		return EXIT_FAILURE;
+		return NULL;
 	}
 	return res;
 }
