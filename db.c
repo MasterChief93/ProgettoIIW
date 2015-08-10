@@ -427,34 +427,73 @@ char *dbselect(sqlite3 *db, char *image, int flag)      //Returns the record of 
 	return res;
 }
 
+int callbackcount2 (void * res, int argc, char **argv, char **azColName)
+{
+	int *val=(int *) res;
+	long j;
+	char *endptr;
+	(void) azColName;
+	
+	if (argc!=1)
+	{
+		fprintf(stderr, "Unexpected number of columns");
+		return EXIT_FAILURE;
+	}  
+	
+	errno=0;
+	j=strtol(argv[0], &endptr, 0);
+	if (errno!=0)
+	{
+		perror("error in strtol");
+		return EXIT_FAILURE;
+	}
+	*val=j;
+	return EXIT_SUCCESS;  
+}
+
+int dbcount2(sqlite3 *db, char *UA)              //Returns the number of existing records in user_agent matching UA. - Restituisce il numero di record esistenti in user agent che corrispondono a UA
+{
+	char *zErrMsg = 0;
+	char *dbcomm;
+	int *res;
+	
+	if((dbcomm = malloc(sizeof(char)*512))==NULL)
+	{
+		perror ("Error in Malloc");
+		return (EXIT_FAILURE);
+	}
+	
+	if((res = malloc(sizeof(int)))==NULL)
+	{
+		perror ("Error in Malloc");
+		return (EXIT_FAILURE);
+	}
+	
+	
+	
+	snprintf(dbcomm, sizeof(char)*512, "SELECT count(*) FROM user_agent WHERE UA = '%s' ", UA);
+	
+	if (sqlite3_exec(db, dbcomm, callbackcount2, (void*)res, &zErrMsg)){
+		perror("error in sqlite_exec");
+		sqlite3_free(zErrMsg);
+		return EXIT_FAILURE;
+	}
+	return *res;
+}
+
 int callbackfUA (void * res, int argc, char **argv, char **azColName)
 {
 	(void) azColName;
-	long j;
-	char *endptr;
 	
 	
-	if (argc!=2)
+	if (argc!=1)
 	{
 		fprintf(stderr, "Unexpected number of columns");
 		return EXIT_FAILURE;
 	} 
 	
-	j = strtol(argv[0], &endptr, 0);
-	if (errno!=0)
-	{
-		perror("error in strtol");
-		return EXIT_FAILURE;
-	}  
-
-	if (j == 0) {
-		char * s=(char *)res;
-		*s = NULL;
-		return EXIT_SUCCESS;
-	}
-	
 	char * s=(char *)res;
-	snprintf(s, sizeof(char)*512, "%s",  argv[1]);
+	snprintf(s, sizeof(char)*512, "%s",  argv[0]);
 	return EXIT_SUCCESS;
 }
 
@@ -463,6 +502,11 @@ char *dbfindUA (sqlite3 *db, char *UA)      //Return the maximum resolution supp
 	char *zErrMsg = 0;
 	char *dbcomm;
 	char *res;
+	
+	if (dbcount2(db, UA)==0)           //If the User Agent isn't found in the db, return NULL - Se l'User Agent non è trovato nel db, ritorna NULL
+	{
+		return NULL;
+	}
 	
 	if((dbcomm = malloc(sizeof(char)*512))==NULL)
 	{
@@ -476,7 +520,7 @@ char *dbfindUA (sqlite3 *db, char *UA)      //Return the maximum resolution supp
 		return NULL;
 	}
 	
-	snprintf(dbcomm, sizeof(char)*512, "SELECT resolution FROM user_agent WHERE name='%s'",  UA);
+	snprintf(dbcomm, sizeof(char)*512, "SELECT resolution FROM user_agent WHERE UA='%s'",  UA);
 	
 	if (sqlite3_exec(db, dbcomm, callbackfUA, (void*)res, &zErrMsg)){
 		perror("error in sqlite_exec");
