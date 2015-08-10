@@ -468,9 +468,7 @@ int dbcount2(sqlite3 *db, char *UA)              //Returns the number of existin
 		perror ("Error in Malloc");
 		return (EXIT_FAILURE);
 	}
-	
-	
-	
+		
 	snprintf(dbcomm, sizeof(char)*512, "SELECT count(*) FROM user_agent WHERE UA = '%s' ", UA);
 	
 	if (sqlite3_exec(db, dbcomm, callbackcount2, (void*)res, &zErrMsg)){
@@ -503,21 +501,21 @@ char *dbfindUA (sqlite3 *db, char *UA)      //Return the maximum resolution supp
 	char *dbcomm;
 	char *res;
 	
-	if (dbcount2(db, UA)==0)           //If the User Agent isn't found in the db, return NULL - Se l'User Agent non è trovato nel db, ritorna NULL
+	if (dbcount2(db, UA) == 0)           //If the User Agent isn't found in the db, return NULL - Se l'User Agent non è trovato nel db, ritorna NULL
 	{
-		return NULL;
+		return "NULL";
 	}
-	
+
 	if((dbcomm = malloc(sizeof(char)*512))==NULL)
 	{
 		perror ("Error in Malloc");
-		return NULL;
+		return "NULL";
 	}
 	
 	if((res = malloc(sizeof(char)*512))==NULL)
 	{
 		perror ("Error in Malloc");
-		return NULL;
+		return "NULL";
 	}
 	
 	snprintf(dbcomm, sizeof(char)*512, "SELECT resolution FROM user_agent WHERE UA='%s'",  UA);
@@ -525,8 +523,9 @@ char *dbfindUA (sqlite3 *db, char *UA)      //Return the maximum resolution supp
 	if (sqlite3_exec(db, dbcomm, callbackfUA, (void*)res, &zErrMsg)){
 		perror("error in sqlite_exec");
 		sqlite3_free(zErrMsg);
-		return NULL;
+		return "NULL";
 	}
+
 	return res;
 }
 
@@ -541,11 +540,12 @@ int dbaddUA (sqlite3 *db, char *UA, char *res)         //Add a User Agent and it
 		return (EXIT_FAILURE);
 	}
 	
-	snprintf(dbcomm, sizeof(char)*512, "INSERT INTO user_agent values(%s,  %s)",  UA, res);
+	snprintf(dbcomm, sizeof(char)*512, "INSERT INTO user_agent values('%s',  '%s')",  UA, res);
 	/*
 	printf("%s\n",dbcomm);
 	fflush(stdout);
 	 */
+
 	errno = 0;
 	if (sqlite3_exec(db, dbcomm, NULL, 0, &zErrMsg)){
 		perror("error in sqlite_execcontrol2");

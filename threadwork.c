@@ -188,7 +188,14 @@ int Thread_Work(int connsd, int fdl, sqlite3 *db, char *orig, char *modif)
 					shutdown_sequence(connsd);
 					return EXIT_FAILURE;
 				}
-				wurfl_interrogation(user_agent, resolution);
+
+				strcpy(resolution,dbfindUA(db,user_agent));
+
+				if (strcmp(resolution,"NULL") == 0) {
+
+					wurfl_interrogation(user_agent, resolution);
+					dbaddUA(db,user_agent,resolution);
+				}
 				//CONTROLLO A CHE RISOLUZIONE E RICHIESTA
 				// CONTROLLO SE GIA ESISTE A QUELLA RISOLUZIONE con dbcheck (Se non c'è la inserisce da solo) 0 se non c'è (modifico con image magick) o 1 se c'è (e vado diretto al percorso delle pagine)
 				int width;
@@ -325,7 +332,7 @@ int Thread_Work(int connsd, int fdl, sqlite3 *db, char *orig, char *modif)
 			shutdown_sequence(connsd);
 			return EXIT_FAILURE;
 		}
-
+		
 		writen = send(connsd,data,fileLen,MSG_DONTWAIT);
 
 		if (writen == 0) {
