@@ -90,8 +90,7 @@ int Thread_Work(int connsd, int fdl, sqlite3 *db, char *orig, char *modif)
 		errno = 0;
 		if (strlen(buff) < 1) {
 			perror("No string");
-			printf("Non ho piu nulla da leggere\n");
-			fflush(stdout);
+
 			free(buff);
 			shutdown_sequence(connsd);
 			return EXIT_FAILURE;
@@ -132,14 +131,6 @@ int Thread_Work(int connsd, int fdl, sqlite3 *db, char *orig, char *modif)
 		resource = strtok_r(NULL," ",&saveptr2);  							//resource will have the resource file name - resource contiene il nome della risorsa
 
 		user_agent = strtok_r(NULL,"",&saveptr3);   //it works...
-		// for (;;) {
-		// 		temp = strtok_r(NULL,"",&saveptr3);
-		// 		printf("Temp = %s\n",temp);
-		// 		fflush(stdout);
-		// 		if (temp == NULL) break;
-		// 		//strcat(temp," ");
-		// 		strcat(user_agent,temp);
-		// }
 
 		if (strcmp(method_name,"GET") == 0) {
 			if (strcmp(resource,"/favicon.ico") == 0) {
@@ -152,8 +143,7 @@ int Thread_Work(int connsd, int fdl, sqlite3 *db, char *orig, char *modif)
 		FILE *image = NULL;
 		char *type = NULL;
 		char *path;
-		printf("Ciao siamo qui %s\n",orig);
-		fflush(stdout);
+
 		path = malloc((256)*sizeof(char));
 		if (path == NULL) {
 			perror("malloc");
@@ -163,8 +153,7 @@ int Thread_Work(int connsd, int fdl, sqlite3 *db, char *orig, char *modif)
 		}
 
 		int flag = 0;
-		printf("Ciao siamo qui2\n");
-		fflush(stdout);
+
 		// In of a non-specific resource request
 
 		if (strcmp(resource,"/") == 0) {
@@ -174,14 +163,11 @@ int Thread_Work(int connsd, int fdl, sqlite3 *db, char *orig, char *modif)
 		// in case of a specific resource request
 		else {
 			//TODO il path immagine totale includerà il "punto (.)" iniziale, la cartella prelevata dal config e il nome dell'immagine specificato nella richiesta HTTP
-			printf("Qui ci siamo\n");
-			fflush(stdout);
+
 			sprintf(path,"%s%s",orig,resource);			// adding the dot in order to use fopen
-			printf("Anche qui %s\n",path);
-			fflush(stdout);
+
 			int ispresent = dbcontrol(db,resource,1);
-			printf("limmagine ce %d\n",ispresent);
-			fflush(stdout);
+
 			if (ispresent == 0) { 					// if the image is not in the database 
 				image = fopen("404.html","r");		// 404 error will be returned
 				type = "text/html";
@@ -230,6 +216,7 @@ int Thread_Work(int connsd, int fdl, sqlite3 *db, char *orig, char *modif)
 				n_image = strtok_r(resource,".",&saveptr4);
 				ext = strtok_r(NULL,".",&saveptr4);
 
+				//Si potrebbero invertire le malloc dato che new_path comprende new_image_name
 				char *new_path;
 				new_path = malloc((strlen(modif) + strlen(n_image) + 14)*sizeof(char));
 				if (new_path == NULL) {
@@ -246,18 +233,19 @@ int Thread_Work(int connsd, int fdl, sqlite3 *db, char *orig, char *modif)
 					shutdown_sequence(connsd);
 					return EXIT_FAILURE;
 				}
-				sprintf(new_path,"%s%s_%d_%d.%s",modif,n_image,width,height,ext);
-				sprintf(new_image_name,"/%s_%d_%d.%s",n_image,width,height,ext);
-				int ischeck = dbcheck(db,new_path,resource);
-				printf("%d\n",ischeck);
-				fflush(stdout);
+
+				sprintf(new_image_name,"%s_%d_%d.%s",n_image,width,height,ext);
+				sprintf(new_path,"%s%s",modif,new_image_name);
+
+				int ischeck = dbcheck(db,new_image_name,resource);
+				//check if the resized image entry is on the database
 				if (ischeck == 0){
-					resizing(path,new_path,width,height);
+					resizing(path,new_path,width,height);	//if it is not, I resize it
 				}
 				image = fopen(new_path,"r");
 				type = "image/jpeg";
 				if (image == NULL) {				// but if it is not on the disk
-					dbremove(db,new_path,0);		// I remove the image from the db
+					dbremove(db,new_image_name,0);	// I remove the image entry from the db
 					image = fopen("404.html","r");	// 404 will be returned
 					type = "text/html";
 					flag = 1;
@@ -270,8 +258,6 @@ int Thread_Work(int connsd, int fdl, sqlite3 *db, char *orig, char *modif)
 					}
 				}
 				//if the image is on the database and on the disk
-				printf("procediamo\n");
-				fflush(stdout);
 			}
 		}
 

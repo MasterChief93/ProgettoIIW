@@ -8,8 +8,6 @@
 
 int callbackchk (void *res, int argc, char **argv, char **azColName)
 {
-	printf("entro\n");
-	fflush(stdout);
 	long j;
 	char *endptr;
 	int *val = (int *) res;
@@ -70,8 +68,6 @@ int dbcontrol(sqlite3 *db, char *image, int flag)              //Controls whethe
 	}
 
 	if (sqlite3_exec(db, dbcomm, callbackchk, (void *)res, &zErrMsg)) {
-		printf("Errore!\n");
-		fflush(stdout);
 		perror("error in sqlite_execcontrol");
 		sqlite3_free(zErrMsg);
 		return EXIT_FAILURE;
@@ -246,14 +242,14 @@ int dbcheck(sqlite3 *db, char *image, char *origimag )           //Calls dbcontr
 	check = dbcontrol(db, image, 0);
 	if (check == 1)
 	{
-		snprintf(dbcomm, sizeof(char)*512, "SELECT acc FROM imag WHERE name=%s",  image);
+		snprintf(dbcomm, sizeof(char)*512, "SELECT acc FROM imag WHERE name = '%s'",  image);
 	if (sqlite3_exec(db, dbcomm, callbackacc, (void *)acc, &zErrMsg)){
 		perror("error in sqlite_exec1");
 		sqlite3_free(zErrMsg);
 		return EXIT_FAILURE;
 		}
 		
-		snprintf(dbcomm, sizeof(char)*512, "UPDATE imag SET date =datetime(), acc = %ld  WHERE name= '%s'", *acc, image);
+		snprintf(dbcomm, sizeof(char)*512, "UPDATE imag SET date = datetime(), acc = %ld  WHERE name= '%s'", *acc, image);
 		if (sqlite3_exec(db, dbcomm, NULL, 0, &zErrMsg)){
 			perror("error in sqlite_exec2");
 			sqlite3_free(zErrMsg);
@@ -269,14 +265,15 @@ int dbcheck(sqlite3 *db, char *image, char *origimag )           //Calls dbcontr
 	check2 = dbcontrol(db, image, 2);
 	if (check2 == 1)
 	{
-		snprintf(dbcomm, sizeof(char)*512, "SELECT acc FROM page WHERE name=%s",  image);
+		snprintf(dbcomm, sizeof(char)*512, "SELECT acc FROM page WHERE name='%s'",  image);
+		printf("%s\n",dbcomm);
 	if (sqlite3_exec(db, dbcomm, callbackacc, (void *)acc, &zErrMsg)){
 		perror("error in sqlite_exec3");
 		sqlite3_free(zErrMsg);
 		return EXIT_FAILURE;
 		}
 		
-		snprintf(dbcomm, sizeof(char)*512, "UPDATE page SET date =datetime(), acc = %ld  WHERE name= '%s'", *acc, image);
+		snprintf(dbcomm, sizeof(char)*512, "UPDATE page SET date = datetime(), acc = %ld  WHERE name= '%s'", *acc, image);
 		if (sqlite3_exec(db, dbcomm, NULL, 0, &zErrMsg)){
 			perror("error in sqlite_exec4");
 			sqlite3_free(zErrMsg);
@@ -291,7 +288,7 @@ int dbcheck(sqlite3 *db, char *image, char *origimag )           //Calls dbcontr
 	}
 	
 
-	snprintf(dbcomm, sizeof(char)*512, "SELECT acc FROM orig WHERE name=%s",  origimag);
+	snprintf(dbcomm, sizeof(char)*512, "SELECT acc FROM orig WHERE name = '%s'",  origimag);
 	if (sqlite3_exec(db, dbcomm, callbackacc, (void *)acc, &zErrMsg)){
 		perror("error in sqlite_exec5");
 		sqlite3_free(zErrMsg);
@@ -406,7 +403,7 @@ char *dbselect(sqlite3 *db, char *image, int flag)      //Returns the record of 
 		exit(EXIT_FAILURE);
 	}
 	
-	snprintf(dbcomm, sizeof(char)*512, "SELECT (*) FROM %s WHERE name=%s", flags, image);
+	snprintf(dbcomm, sizeof(char)*512, "SELECT (*) FROM %s WHERE name='%s'", flags, image);
 	
 	if (sqlite3_exec(db, dbcomm, callbacksel, (void*)res, &zErrMsg)){
 		perror("error in sqlite_exec");
