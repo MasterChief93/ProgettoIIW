@@ -321,34 +321,51 @@ int Thread_Work(int connsd, int fdl, sqlite3 *db, char *orig, char *modif)
 			sprintf(response,"HTTP/1.1 404 Not Found\r\nContent-Type: %s\r\nContentLength: %d\r\n\r\n",type,fileLen);
 		}
 	
-		writen = send(connsd,response,strlen(response),MSG_DONTWAIT);
-
-		if (writen == 0) {
-			perror("write");
-			free(response);
-			free(data);
-			free(buff);
-			free(path);
-			shutdown_sequence(connsd);
-			return EXIT_FAILURE;
+		ssize_t write_resp = 0;
+		ssize_t len_resp = strlen(response);
+		while (len_resp > 0) {
+			write_resp = send(connsd,response,len_resp,MSG_DONTWAIT);
+			if (write_resp == -1) continue;
+			response += write_resp;
+			len_resp -= write_resp;
 		}
+	
+
+		// if (writen == 0) {
+		// 	perror("write");
+		// 	free(response);
+		// 	free(data);
+		// 	free(buff);
+		// 	free(path);
+		// 	shutdown_sequence(connsd);
+		// 	return EXIT_FAILURE;
+		// }
 		
-		writen = send(connsd,data,fileLen,MSG_DONTWAIT);
-
-		if (writen == 0) {
-			perror("write");
-			free(response);
-			free(data);
-			free(buff);
-			free(path);
-			shutdown_sequence(connsd);
-			return EXIT_FAILURE;
+		ssize_t write_data;
+		ssize_t len_data = fileLen;
+		while (len_data > 0) {
+			write_data = send(connsd,data,len_data,MSG_DONTWAIT);
+			if (write_data == -1) continue;
+			printf("Ho scritto %d\n",write_data);
+			fflush(stdout);
+			data += write_data;
+			len_data -= write_data;
 		}
 
-		free(response);
-		free(path);
-		free(data);
-		//chiama funzione GET
+		// if (writen == 0) {
+		// 	perror("write");
+		// 	free(response);
+		// 	free(data);
+		// 	free(buff);
+		// 	free(path);
+		// 	shutdown_sequence(connsd);
+		// 	return EXIT_FAILURE;
+		// }
+
+
+		//free(response);
+		//free(path);
+		//free(data);
 	}
 	else if (strcmp(method_name,"HEAD") == 0) {
 		printf("Ho fatto le HEAD\n");
