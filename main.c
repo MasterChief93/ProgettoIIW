@@ -178,26 +178,34 @@ int main()
 		return (EXIT_FAILURE);
 	}
 	//This and the two after: Semaphore to manage the various processes, mostly to avoid the "thundering herd" effect on the Listen - Questo ed i due successivi: Semaforo per gestire i vari processi, principalmente per evitare l'effetto "Thundering Herd" sulla Listen.
-	if ((mem=shmget(IPC_PRIVATE, sizeof(sem_t), O_CREAT|0666))==-1)     
-	{
-		perror("Error in shmget");
+	
+	// if ((mem=shmget(IPC_PRIVATE, sizeof(sem_t), O_CREAT|0666))==-1)     
+	// {
+	// 	perror("Error in shmget");
+	// 	sqlite3_close(db);
+	// 	return (EXIT_FAILURE);
+	// }
+	
+	// if ((semaphore=shmat(mem, NULL, 0))==NULL)
+	// {
+	// 	perror("Error in shmat");
+	// 	sqlite3_close(db);
+	// 	return (EXIT_FAILURE);
+	// }
+	
+	// if (sem_init(semaphore, 1, 1) == -1) {
+	// 		perror("sem_init");
+	// 		sqlite3_close(db);
+	// 		return EXIT_FAILURE;
+	// 	}
+	int fdlock = open("lock",O_RDWR);
+	if (fdlock == -1) {
+		perror("open");
 		sqlite3_close(db);
-		return (EXIT_FAILURE);
+		return EXIT_FAILURE;
 	}
-	
-	if ((semaphore=shmat(mem, NULL, 0))==NULL)
-	{
-		perror("Error in shmat");
-		sqlite3_close(db);
-		return (EXIT_FAILURE);
-	}
-	
-	if (sem_init(semaphore, 1, 1) == -1) {
-			perror("sem_init");
-			sqlite3_close(db);
-			return EXIT_FAILURE;
-		}
-	
+
+
 	for (i=1; i <= cfg->Max_Prole_Num; i++)        //Preforking - Preforking
 	{
 		switch (fork())    //Funziona?
@@ -209,7 +217,7 @@ int main()
 			case 0:
 				printf("Sono un figlio\n");
 				fflush(stdout);
-				Process_Work(sock, semaphore, cfg, fdl, db);  //Da aggiungere in un nostro header
+				Process_Work(sock, fdlock, cfg, fdl, db);  //Da aggiungere in un nostro header
 			default:
 				continue;
 		}
@@ -225,7 +233,7 @@ int main()
 					sqlite3_close(db);
 					exit(EXIT_FAILURE);
 				case 0:
-					Process_Work(sock,semaphore, cfg, fdl, db);
+					Process_Work(sock,fdlock, cfg, fdl, db);
 				default:
 					continue;
 			}

@@ -90,7 +90,6 @@ int Thread_Work(int connsd, int fdl, sqlite3 *db, char *orig, char *modif)
 		errno = 0;
 		if (strlen(buff) < 1) {
 			perror("No string");
-
 			free(buff);
 			shutdown_sequence(connsd);
 			return EXIT_FAILURE;
@@ -365,7 +364,7 @@ int Thread_Work(int connsd, int fdl, sqlite3 *db, char *orig, char *modif)
 
 		//free(response);
 		//free(path);
-		//free(data);
+		//free(data - fileLen);
 	}
 	else if (strcmp(method_name,"HEAD") == 0) {
 		printf("Ho fatto le HEAD\n");

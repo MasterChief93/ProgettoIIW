@@ -72,6 +72,7 @@ int dbcontrol(sqlite3 *db, char *image, int flag)              //Controls whethe
 		sqlite3_free(zErrMsg);
 		return EXIT_FAILURE;
 	}
+	free(dbcomm);
 	return *res;
 }
 
@@ -104,7 +105,7 @@ int dbadd(sqlite3 *db, struct Record rd, int flag)                //Adds to tabl
 		sqlite3_free(zErrMsg);
 		return EXIT_FAILURE;
 	}
-	
+	free(dbcomm);
 	return EXIT_SUCCESS;
 	
 }
@@ -133,7 +134,7 @@ int dbremove(sqlite3 *db, char *image, int flag)                 //Removes from 
 		sqlite3_free(zErrMsg);
 		return EXIT_FAILURE;
 	}
-	
+	free(dbcomm);
 	return EXIT_SUCCESS;
 }
 
@@ -200,7 +201,9 @@ int dbremoveoldest(sqlite3 *db)                              //Removes from tabl
 		perror("error in system (rm)");                                  //NOTA: Se non dovesse funzionare, probabilmente andrà aggiunto ./ a nameimm
 		return EXIT_FAILURE;
 	}
-	
+	free(dbcomm);
+	free(nameimm);
+	free(filepath);
 	return EXIT_SUCCESS;
 }
 
@@ -274,7 +277,6 @@ int dbcheck(sqlite3 *db, char *image, char *origimag )           //Calls dbcontr
 	if (check2 == 1)
 	{
 		snprintf(dbcomm, sizeof(char)*512, "SELECT acc FROM page WHERE name='%s'",  image);
-		printf("%s\n",dbcomm);
 	if (sqlite3_exec(db, dbcomm, callbackacc, (void *)acc, &zErrMsg)){
 		perror("error in sqlite_exec3");
 		sqlite3_free(zErrMsg);
@@ -309,7 +311,7 @@ int dbcheck(sqlite3 *db, char *image, char *origimag )           //Calls dbcontr
 		sqlite3_free(zErrMsg);
 		return EXIT_FAILURE;
 	}
-	
+	free(dbcomm);
 	return check;
 }
 
@@ -372,6 +374,7 @@ int dbcount(sqlite3 *db, int flag)              //Returns the number of existing
 		sqlite3_free(zErrMsg);
 		return EXIT_FAILURE;
 	}
+	free(dbcomm);
 	return *res;
 }
 
@@ -424,6 +427,7 @@ char *dbselect(sqlite3 *db, char *image, int flag)      //Returns the record of 
 		sqlite3_free(zErrMsg);
 		return NULL;
 	}
+	free(dbcomm);
 	return res;
 }
 
@@ -476,6 +480,7 @@ int dbcount2(sqlite3 *db, char *UA)              //Returns the number of existin
 		sqlite3_free(zErrMsg);
 		return EXIT_FAILURE;
 	}
+	free(dbcomm);
 	return *res;
 }
 
@@ -525,7 +530,7 @@ char *dbfindUA (sqlite3 *db, char *UA)      //Return the maximum resolution supp
 		sqlite3_free(zErrMsg);
 		return "NULL";
 	}
-
+	free(dbcomm);
 	return res;
 }
 
@@ -552,7 +557,7 @@ int dbaddUA (sqlite3 *db, char *UA, char *res)         //Add a User Agent and it
 		sqlite3_free(zErrMsg);
 		return EXIT_FAILURE;
 	}
-	
+	free(dbcomm);
 	return EXIT_SUCCESS;
 }
 

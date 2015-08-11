@@ -75,7 +75,7 @@ void *thread_work(void *arg) {
 		}
 		printf("Il socket e: %d\n",connsd);
 		Thread_Work(connsd, fdl, db, orig, modif);
-		//Real_Work();             //Leggere richiesta e far partire funzione adatta (unica funzione nel nostro caso), presente su altro file (per modularità)
+		//Leggere richiesta e far partire funzione adatta (unica funzione nel nostro caso), presente su altro file (per modularità)
 		//Aggiornare Log
 		if (pthread_mutex_lock(&mtx_struct) < 0) {
 			perror("pthred_mutex_lock");
@@ -90,7 +90,7 @@ void *thread_work(void *arg) {
 	return 0;
 }
 
-int Process_Work(int lsock, sem_t *sem, struct Config *cfg,  int fdl, sqlite3 *db)
+int Process_Work(int lsock, int fdlock, struct Config *cfg,  int fdl, sqlite3 *db)
 {
 	int i, error=0, connsd, thread_num, countt;//, round=0;
 	socklen_t client_len;
@@ -139,33 +139,54 @@ int Process_Work(int lsock, sem_t *sem, struct Config *cfg,  int fdl, sqlite3 *d
 	{
 		//while (1==1)
 		//{
-		if (sem_wait(sem) == -1) {
-			perror("sem_wait");
-			exit(EXIT_FAILURE);                                          //O permettiamo un certo numero di errori 
-		}                   
-		sem_getvalue(sem,&value);
-		printf("Ciao cicci sono in attesa %lld, %d\n", (long long int) getpid(), value);
+		//sem_getvalue(sem,&value);
+		//printf("Ciao cicci. Prima di entrare il semaforo vale %lld, %d\n", (long long int) getpid(), value);
+		//fflush(stdout);
+		//if (sem_wait(sem) == -1) {
+		//	perror("sem_wait");
+		//	exit(EXIT_FAILURE);                                          //O permettiamo un certo numero di errori 
+		//}                   
+		//sem_getvalue(sem,&value);
+		printf("Ciao cicci sono in attesa %lld\n", (long long int) getpid());
 		fflush(stdout);                                             //Andrà implementato un semaforo tra i processi per evitare l'effetto "Thundering Herd"
+		if (lockf(fdlock, F_LOCK,0) == -1) {
+			perror("lockf");
+			exit(EXIT_FAILURE);
+		}
+		printf("Ciao cicci ho preso il lock %lld\n", (long long int) getpid());
+		fflush(stdout);
 		if ((connsd = accept(lsock, (struct sockaddr*)&clientaddr,&client_len)) < 0)
 		{
 			perror("Error in accept");
 			error+=1;
 			if (error <= cfg->Max_Error_Allowed) continue;                    //Try to ignore the error - Prova ad ignorare l'errore
 			 else {
-				 if (sem_post(sem) == -1) {
-					perror("sem_post");                                  //Verficare se la chiusura improvvisa di un processo in questo punto non rende il semaforo inutilizzabile (posto a 0 con nessuno che possa incrementarlo)
+			 	if (lockf(fdlock, F_ULOCK,0) == -1) {
+					perror("lockf");
 					exit(EXIT_FAILURE);
 				}
+				//  if (sem_post(sem) == -1) {
+				// 	perror("sem_post");                                  //Verficare se la chiusura improvvisa di un processo in questo punto non rende il semaforo inutilizzabile (posto a 0 con nessuno che possa incrementarlo)
+				// 	exit(EXIT_FAILURE);
+				// }
 				 exit(EXIT_FAILURE);  
 			}                                                            //Too many failures, restart - Troppi fallimenti, ricomincia
 		}
-		if (sem_post(sem) == -1) {
-			perror("sem_post");                                          //Verficare se la chiusura improvvisa di un processo in questo punto non rende il semaforo inutilizzabile (posto a 0 con nessuno che possa incrementarlo)
+		//printf("Ho acchiappato la connessione %lld\n",(long long int) getpid());
+		//fflush(stdout);
+		if (lockf(fdlock, F_ULOCK,0) == -1) {
+			perror("lockf");
 			exit(EXIT_FAILURE);
 		}
-		sem_getvalue(sem,&value);
-		printf("Ho rilasciato il semaforo (%lld) e il suo valore è %d\n",(long long int) getpid(), value);
+		printf("Ciao cicci ho lasciato il lock %lld\n", (long long int) getpid());
 		fflush(stdout);
+		// if (sem_post(sem) == -1) {
+		// 	perror("sem_post");                                          //Verficare se la chiusura improvvisa di un processo in questo punto non rende il semaforo inutilizzabile (posto a 0 con nessuno che possa incrementarlo)
+		// 	exit(EXIT_FAILURE);
+		// }
+		// sem_getvalue(sem,&value);
+		// printf("Ho rilasciato il semaforo (%lld) e il suo valore è %d\n",(long long int) getpid(), value);
+		// fflush(stdout);
 		if (pthread_mutex_lock(&mtx_struct) < 0) {
 			perror("pthread_mutex_lock");
 			exit(EXIT_FAILURE);
