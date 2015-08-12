@@ -53,9 +53,13 @@ int Thread_Work(int connsd, int fdl, sqlite3 *db, char *orig, char *modif)
 		errno = 0;
 		nleft = BUFF_SIZE;
 		while(nleft > 0) {
+			printf("Sto dentro\n");
+			fflush(stdout);
 			if ((readn = recv(connsd, ptr, nleft, MSG_DONTWAIT)) < 0) {
 				if (errno == EAGAIN || errno == EWOULDBLOCK) {
 					if (strlen(buff) == 0) {
+						printf("e 0 ma continuo\n");
+						fflush(stdout);
 						continue;
 					} else {
 						*ptr = '\0';
@@ -70,7 +74,6 @@ int Thread_Work(int connsd, int fdl, sqlite3 *db, char *orig, char *modif)
 					return EXIT_FAILURE;
 				}
 			}
-
 			else if (readn == 0) 
 				break;
 
@@ -105,12 +108,12 @@ int Thread_Work(int connsd, int fdl, sqlite3 *db, char *orig, char *modif)
 		char *user_agent_intro;
 		char *user_agent;
 
-		user_agent = malloc(256*sizeof(char));
-		if (user_agent == NULL) {
-			perror("malloc");
-			shutdown_sequence(connsd);
-			return EXIT_FAILURE;
-		}
+		// user_agent = malloc(256*sizeof(char));
+		// if (user_agent == NULL) {
+		// 	perror("malloc");
+		// 	shutdown_sequence(connsd);
+		// 	return EXIT_FAILURE;
+		// }
 		char *method_name;
 		char *resource;
 		char *temp;
@@ -141,15 +144,7 @@ int Thread_Work(int connsd, int fdl, sqlite3 *db, char *orig, char *modif)
 			//These variables will be used in both cases
 		FILE *image = NULL;
 		char *type = NULL;
-		char *path;
-
-		path = malloc((256)*sizeof(char));
-		if (path == NULL) {
-			perror("malloc");
-			free(buff);
-			shutdown_sequence(connsd);
-			return EXIT_FAILURE;
-		}
+		
 
 		int flag = 0;
 
@@ -158,10 +153,20 @@ int Thread_Work(int connsd, int fdl, sqlite3 *db, char *orig, char *modif)
 		if (strcmp(resource,"/") == 0) {
 			image = fopen("default.html","r");
 			type = "text/html";
-		}
-		// in case of a specific resource request
-		else {
+			free(buff);
+		} else { // in case of a specific resource request
+			
 			//TODO il path immagine totale includerà il "punto (.)" iniziale, la cartella prelevata dal config e il nome dell'immagine specificato nella richiesta HTTP
+
+			char *path;
+
+			path = malloc((256)*sizeof(char));
+			if (path == NULL) {
+				perror("malloc");
+				free(buff);
+				shutdown_sequence(connsd);
+				return EXIT_FAILURE;
+			}
 
 			sprintf(path,"%s%s",orig,resource);			// adding the dot in order to use fopen
 
@@ -191,7 +196,6 @@ int Thread_Work(int connsd, int fdl, sqlite3 *db, char *orig, char *modif)
 				strcpy(resolution,dbfindUA(db,user_agent));
 
 				if (strcmp(resolution,"NULL") == 0) {
-
 					wurfl_interrogation(user_agent, resolution);
 					dbaddUA(db,user_agent,resolution);
 				}
@@ -200,24 +204,26 @@ int Thread_Work(int connsd, int fdl, sqlite3 *db, char *orig, char *modif)
 				int width;
 				int height;
 				sscanf(resolution,"%d %d ",&width,&height);
-				//resizing(image_name,width,height);
 				
+				free(resolution);
+
 				char *n_image;
-				n_image = malloc(256*sizeof(char));
-				if (n_image == NULL) {
-					free(buff);
-					free(path);
-					shutdown_sequence(connsd);
-					return EXIT_FAILURE;
-				}
 				char *ext;
-				ext = malloc(5*sizeof(char));
-				if (ext == NULL) {
-					free(buff);
-					free(path);
-					shutdown_sequence(connsd);
-					return EXIT_FAILURE;
-				}
+				// n_image = malloc(256*sizeof(char));
+				// if (n_image == NULL) {
+				// 	free(buff);
+				// 	free(path);
+				// 	shutdown_sequence(connsd);
+				// 	return EXIT_FAILURE;
+				// }
+				
+				// ext = malloc(5*sizeof(char));
+				// if (ext == NULL) {
+				// 	free(buff);
+				// 	free(path);
+				// 	shutdown_sequence(connsd);
+				// 	return EXIT_FAILURE;
+				// }
 				char *saveptr4;
 				n_image = strtok_r(resource,".",&saveptr4);
 				ext = strtok_r(NULL,".",&saveptr4);
@@ -228,6 +234,7 @@ int Thread_Work(int connsd, int fdl, sqlite3 *db, char *orig, char *modif)
 				if (new_path == NULL) {
 					free(buff);
 					free(path);
+					free(new_path);
 					shutdown_sequence(connsd);
 					return EXIT_FAILURE;
 				}
@@ -236,6 +243,8 @@ int Thread_Work(int connsd, int fdl, sqlite3 *db, char *orig, char *modif)
 				if (new_image_name == NULL) {
 					free(buff);
 					free(path);
+					free(new_path);
+					free(new_image_name);
 					shutdown_sequence(connsd);
 					return EXIT_FAILURE;
 				}
@@ -245,7 +254,7 @@ int Thread_Work(int connsd, int fdl, sqlite3 *db, char *orig, char *modif)
 
 				int ischeck = dbcheck(db,new_image_name,resource);
 				//check if the resized image entry is on the database
-				if (ischeck == 0){
+				if (ischeck == 0) {
 					resizing(path,new_path,width,height);	//if it is not, I resize it
 				}
 				image = fopen(new_path,"r");
@@ -259,10 +268,23 @@ int Thread_Work(int connsd, int fdl, sqlite3 *db, char *orig, char *modif)
 						perror("fopen");
 						free(buff);
 						free(path);
+						free(new_path);
+						free(new_image_name);
 						shutdown_sequence(connsd);
 						return EXIT_FAILURE;
 					}
 				}
+						
+				free(buff);
+				
+				free(path);
+			
+				free(new_image_name); //Prima si libera new_image_name e poi new_path...
+				
+				free(new_path);
+				
+				
+				
 				//if the image is on the database and on the disk
 			}
 		}
@@ -280,11 +302,11 @@ int Thread_Work(int connsd, int fdl, sqlite3 *db, char *orig, char *modif)
 			perror("malloc");
 			free(data);
 			free(buff);
-			free(path);
 			shutdown_sequence(connsd);
 			return EXIT_FAILURE;
 		}
-
+		char *data_copy; //In order to free the memory because data will be used and moved
+		data_copy = data;
 
 		ssize_t red, n;
 		n = fileLen;
@@ -297,7 +319,6 @@ int Thread_Work(int connsd, int fdl, sqlite3 *db, char *orig, char *modif)
 
 		fclose(image);
 
-
 		char *response;
 		if (flag == 0) {
 			response = malloc(sizeof(char)*(strlen(type)* + strlen("HTTP/1.1 200 OK\r\nContent-Type: %s\r\nContentLength: %d\r\n\r\n%s")));
@@ -309,11 +330,11 @@ int Thread_Work(int connsd, int fdl, sqlite3 *db, char *orig, char *modif)
 			free(response);
 			free(data);
 			free(buff);
-			free(path);
 			shutdown_sequence(connsd);
 			return EXIT_FAILURE;
 		}
-
+		char *resp_copy;
+		resp_copy = response;
 		if (flag == 0) {
 			sprintf(response,"HTTP/1.1 200 OK\r\nContent-Type: %s\r\nContentLength: %d\r\n\r\n",type,fileLen);
 		} else {
@@ -362,11 +383,10 @@ int Thread_Work(int connsd, int fdl, sqlite3 *db, char *orig, char *modif)
 		// }
 
 
-		//free(response);
-		//free(path);
-		//free(data - fileLen);
-	}
-	else if (strcmp(method_name,"HEAD") == 0) {
+		free(resp_copy);
+		free(data_copy);
+
+	} else if (strcmp(method_name,"HEAD") == 0) {
 		printf("Ho fatto le HEAD\n");
 		fflush(stdout);
 		//chiama funzione HEAD
@@ -380,9 +400,7 @@ int Thread_Work(int connsd, int fdl, sqlite3 *db, char *orig, char *modif)
 			shutdown_sequence(connsd);
 			return EXIT_FAILURE;
 		}
-
 	}
-	free(buff);
 	}
 	return shutdown_sequence(connsd);
 }

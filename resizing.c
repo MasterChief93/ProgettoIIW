@@ -20,8 +20,6 @@ int resizing(const char *image_name,const char *new_image_path,int width,int hei
 	m_wand = NewMagickWand();
 	// Read the image - all you need to do is change "logo:" to some other
 	// filename to have this resize and, if necessary, convert a different file
-	printf("prontini\n");
-	fflush(stdout);
 	MagickReadImage(m_wand,image_name);
 
 	// Get the image's width and height
@@ -43,11 +41,9 @@ int resizing(const char *image_name,const char *new_image_path,int width,int hei
 	MagickSetImageCompressionQuality(m_wand,95);
 	
 	/* Writethe new image */
-	printf("Sto per scrivere\n");
-	fflush(stdout);
+
 	MagickWriteImage(m_wand,new_image_path);
-	printf("Tutto ok\n");
-	fflush(stdout);
+
 	/* Clean up */
 	if(m_wand)m_wand = DestroyMagickWand(m_wand);
 	

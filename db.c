@@ -59,8 +59,11 @@ int dbcontrol(sqlite3 *db, char *image, int flag)              //Controls whethe
 		exit(EXIT_FAILURE);
 	}
 
-	snprintf(dbcomm, sizeof(char)*512, "SELECT count(*) FROM %s WHERE name='%s'", flags, image);
-	
+	ssize_t cou = snprintf(dbcomm, sizeof(char)*512, "SELECT count(*) FROM %s WHERE name='%s'", flags, image);
+	if (cou > sizeof(char)*512 || cou == -1) {
+		perror("snprintf riga 64");
+		return EXIT_FAILURE;
+	}
 	res = malloc(sizeof(int));
 	if (res == NULL) {
 		perror("malloc in db");
@@ -87,13 +90,17 @@ int dbadd(sqlite3 *db, struct Record rd, int flag)                //Adds to tabl
 		perror ("Error in Malloc");
 		return (EXIT_FAILURE);
 	}
-	
-	if (flag==0) snprintf(dbcomm, sizeof(char)*512, "INSERT INTO imag values('%s', datetime(), %ld)",  rd.name, rd.acc);
-	else if (flag==1) snprintf(dbcomm, sizeof(char)*512, "INSERT INTO orig values('%s', datetime(), %ld)",  rd.name, rd.acc);  //Non è normale...
-	else if (flag==2) snprintf(dbcomm, sizeof(char)*512, "INSERT INTO page values('%s', datetime(), %ld)",  rd.name, rd.acc);
+	ssize_t cou;
+	if (flag==0) cou = snprintf(dbcomm, sizeof(char)*512, "INSERT INTO imag values('%s', datetime(), %ld)",  rd.name, rd.acc);
+	else if (flag==1) cou = snprintf(dbcomm, sizeof(char)*512, "INSERT INTO orig values('%s', datetime(), %ld)",  rd.name, rd.acc);  //Non è normale...
+	else if (flag==2) cou = snprintf(dbcomm, sizeof(char)*512, "INSERT INTO page values('%s', datetime(), %ld)",  rd.name, rd.acc);
 	else {
 		fprintf(stderr, "Error in dbadd: wrong flag value");
 		exit(EXIT_FAILURE);
+	}
+	if (cou > sizeof(char)*512 || cou == -1) {
+		perror("snprintf riga 99");
+		return EXIT_FAILURE;
 	}
 	/*
 	printf("%s\n",dbcomm);
@@ -120,15 +127,18 @@ int dbremove(sqlite3 *db, char *image, int flag)                 //Removes from 
 		perror ("Error in Malloc");
 		return (EXIT_FAILURE);
 	}
-	
-	if (flag==0) snprintf(dbcomm, sizeof(char)*512, "DELETE FROM imag WHERE name='%s'", image);
-	else if (flag==1) snprintf(dbcomm, sizeof(char)*512, "DELETE FROM orig WHERE name='%s'", image);
-	else if (flag==2) snprintf(dbcomm, sizeof(char)*512, "DELETE FROM page WHERE name='%s'", image);
+	ssize_t cou;
+	if (flag==0) cou = snprintf(dbcomm, sizeof(char)*512, "DELETE FROM imag WHERE name='%s'", image);
+	else if (flag==1) cou = snprintf(dbcomm, sizeof(char)*512, "DELETE FROM orig WHERE name='%s'", image);
+	else if (flag==2) cou = snprintf(dbcomm, sizeof(char)*512, "DELETE FROM page WHERE name='%s'", image);
 	else {
 		fprintf(stderr, "Error in dbadd: wrong flag value");
 		exit(EXIT_FAILURE);
 	}
-	
+	if (cou > sizeof(char)*512 || cou == -1) {
+		perror("snprintf riga 139");
+		return EXIT_FAILURE;
+	}
 	if (sqlite3_exec(db, dbcomm, NULL, 0, &zErrMsg)){
 		perror("error in sqlite_exec");
 		sqlite3_free(zErrMsg);
@@ -196,7 +206,11 @@ int dbremoveoldest(sqlite3 *db)                              //Removes from tabl
 	
 	dbremove(db, nameimm, 2);
 	
-	snprintf(filepath, sizeof(char)*512, "/bin/rm %s.*", nameimm);       //Removes the files from the system - Rimuove i file dal sistema
+	ssize_t cou = snprintf(filepath, sizeof(char)*512, "/bin/rm %s.*", nameimm);       //Removes the files from the system - Rimuove i file dal sistema
+	if (cou > sizeof(char)*512 || cou == -1) {
+		perror("snprintf riga 211");
+		return EXIT_FAILURE;
+	}
 	if (system(filepath)==-1){
 		perror("error in system (rm)");                                  //NOTA: Se non dovesse funzionare, probabilmente andrà aggiunto ./ a nameimm
 		return EXIT_FAILURE;
@@ -237,7 +251,7 @@ int dbcheck(sqlite3 *db, char *image, char *origimag )           //Calls dbcontr
 	char *dbcomm;
 	long *acc;
 	int check,check2;
-	
+	ssize_t cou;
 	if((dbcomm = malloc(sizeof(char)*512))==NULL)
 	{
 		perror ("Error in Malloc");
@@ -253,14 +267,22 @@ int dbcheck(sqlite3 *db, char *image, char *origimag )           //Calls dbcontr
 	check = dbcontrol(db, image, 0);
 	if (check == 1)
 	{
-		snprintf(dbcomm, sizeof(char)*512, "SELECT acc FROM imag WHERE name = '%s'",  image);
+		cou = snprintf(dbcomm, sizeof(char)*512, "SELECT acc FROM imag WHERE name = '%s'",  image);
+		if (cou > sizeof(char)*512 || cou == -1) {
+		perror("snprintf riga 272");
+		return EXIT_FAILURE;
+	}
 	if (sqlite3_exec(db, dbcomm, callbackacc, (void *)acc, &zErrMsg)){
 		perror("error in sqlite_exec1");
 		sqlite3_free(zErrMsg);
 		return EXIT_FAILURE;
 		}
 		
-		snprintf(dbcomm, sizeof(char)*512, "UPDATE imag SET date = datetime(), acc = %ld  WHERE name= '%s'", *acc, image);
+		cou = snprintf(dbcomm, sizeof(char)*512, "UPDATE imag SET date = datetime(), acc = %ld  WHERE name= '%s'", *acc, image);
+		if (cou > sizeof(char)*512 || cou == -1) {
+		perror("snprintf riga 283");
+		return EXIT_FAILURE;
+	}
 		if (sqlite3_exec(db, dbcomm, NULL, 0, &zErrMsg)){
 			perror("error in sqlite_exec2");
 			sqlite3_free(zErrMsg);
@@ -276,14 +298,22 @@ int dbcheck(sqlite3 *db, char *image, char *origimag )           //Calls dbcontr
 	check2 = dbcontrol(db, image, 2);
 	if (check2 == 1)
 	{
-		snprintf(dbcomm, sizeof(char)*512, "SELECT acc FROM page WHERE name='%s'",  image);
+		cou = snprintf(dbcomm, sizeof(char)*512, "SELECT acc FROM page WHERE name='%s'",  image);
+		if (cou > sizeof(char)*512 || cou == -1) {
+		perror("snprintf riga 303");
+		return EXIT_FAILURE;
+		}
 	if (sqlite3_exec(db, dbcomm, callbackacc, (void *)acc, &zErrMsg)){
 		perror("error in sqlite_exec3");
 		sqlite3_free(zErrMsg);
 		return EXIT_FAILURE;
 		}
 		
-		snprintf(dbcomm, sizeof(char)*512, "UPDATE page SET date = datetime(), acc = %ld  WHERE name= '%s'", *acc, image);
+		cou = snprintf(dbcomm, sizeof(char)*512, "UPDATE page SET date = datetime(), acc = %ld  WHERE name= '%s'", *acc, image);
+		if (cou > sizeof(char)*512 || cou == -1) {
+		perror("snprintf riga 314");
+		return EXIT_FAILURE;
+	}
 		if (sqlite3_exec(db, dbcomm, NULL, 0, &zErrMsg)){
 			perror("error in sqlite_exec4");
 			sqlite3_free(zErrMsg);
@@ -297,15 +327,21 @@ int dbcheck(sqlite3 *db, char *image, char *origimag )           //Calls dbcontr
 		dbadd(db, rd, 2);
 	}
 	
-
-	snprintf(dbcomm, sizeof(char)*512, "SELECT acc FROM orig WHERE name = '%s'",  origimag);
+	cou = snprintf(dbcomm, sizeof(char)*512, "SELECT acc FROM orig WHERE name = '%s'",  origimag);
 	if (sqlite3_exec(db, dbcomm, callbackacc, (void *)acc, &zErrMsg)){
 		perror("error in sqlite_exec5");
 		sqlite3_free(zErrMsg);
 		return EXIT_FAILURE;
 	}
-	
-	snprintf(dbcomm, sizeof(char)*512, "UPDATE orig SET acc = %ld WHERE name= '%s'", *acc, origimag);
+	if (cou > sizeof(char)*512 || cou == -1) {
+		perror("snprintf riga 337");
+		return EXIT_FAILURE;
+	}
+	cou = snprintf(dbcomm, sizeof(char)*512, "UPDATE orig SET acc = %ld WHERE name= '%s'", *acc, origimag);
+	if (cou > sizeof(char)*512 || cou == -1) {
+		perror("snprintf riga 342");
+		return EXIT_FAILURE;
+	}
 	if (sqlite3_exec(db, dbcomm, NULL, 0, &zErrMsg)){
 		perror("error in sqlite_exec6");
 		sqlite3_free(zErrMsg);
@@ -358,16 +394,23 @@ int dbcount(sqlite3 *db, int flag)              //Returns the number of existing
 		perror ("Error in Malloc");
 		return (EXIT_FAILURE);
 	}
-	
-	if (flag==0) snprintf(flags, sizeof(char)*10, "imag");
-	else if (flag==1) snprintf(flags, sizeof(char)*10, "orig");
-	else if (flag==2) snprintf(flags, sizeof(char)*10, "page");
+	ssize_t cou;
+	if (flag==0) cou = snprintf(flags, sizeof(char)*10, "imag");
+	else if (flag==1) cou = snprintf(flags, sizeof(char)*10, "orig");
+	else if (flag==2) cou = snprintf(flags, sizeof(char)*10, "page");
 	else {
 		fprintf(stderr, "Error in dbcontrol: wrong flag value");
 		exit(EXIT_FAILURE);
 	}
-	
-	snprintf(dbcomm, sizeof(char)*512, "SELECT count(*) FROM %s ", flags);
+	if (cou > sizeof(char)*512 || cou == -1) {
+		perror("snprintf riga 406");
+		return EXIT_FAILURE;
+	}
+	cou = snprintf(dbcomm, sizeof(char)*512, "SELECT count(*) FROM %s ", flags);
+	if (cou > sizeof(char)*512 || cou == -1) {
+		perror("snprintf riga 412");
+		return EXIT_FAILURE;
+	}
 	
 	if (sqlite3_exec(db, dbcomm, callbackcount, (void*)res, &zErrMsg)){
 		perror("error in sqlite_exec");
@@ -389,7 +432,11 @@ int callbacksel (void * res, int argc, char **argv, char **azColName)
 	}  
 	
 	char * s=(char *)res;
-	snprintf(s, sizeof(char)*512, "%s %s %s", argv[0], argv[1], argv[2]);
+	ssize_t cou = snprintf(s, sizeof(char)*512, "%s %s %s", argv[0], argv[1], argv[2]);
+	if (cou > sizeof(char)*512 || cou == -1) {
+		perror("snprintf riga 437");
+		return EXIT_FAILURE;
+	}
 	return EXIT_SUCCESS;
 }
 
@@ -411,17 +458,24 @@ char *dbselect(sqlite3 *db, char *image, int flag)      //Returns the record of 
 		perror ("Error in Malloc");
 		return NULL;
 	}
-	
-	if (flag==0) snprintf(flags, sizeof(char)*10, "imag");
-	else if (flag==1) snprintf(flags, sizeof(char)*10, "orig");
-	else if (flag==1) snprintf(flags, sizeof(char)*10, "page");
+	ssize_t cou;
+	if (flag==0) cou = snprintf(flags, sizeof(char)*10, "imag");
+	else if (flag==1) cou = snprintf(flags, sizeof(char)*10, "orig");
+	else if (flag==1) cou = snprintf(flags, sizeof(char)*10, "page");
 	else {
 		fprintf(stderr, "Error in dbcontrol: wrong flag value");
 		exit(EXIT_FAILURE);
 	}
+	if (cou > sizeof(char)*512 || cou == -1) {
+		perror("snprintf riga 470");
+		return EXIT_FAILURE;
+	}
 	
-	snprintf(dbcomm, sizeof(char)*512, "SELECT (*) FROM %s WHERE name='%s'", flags, image);
-	
+	cou = snprintf(dbcomm, sizeof(char)*512, "SELECT (*) FROM %s WHERE name='%s'", flags, image);
+	if (cou > sizeof(char)*512 || cou == -1) {
+		perror("snprintf riga 476");
+		return EXIT_FAILURE;
+	}
 	if (sqlite3_exec(db, dbcomm, callbacksel, (void*)res, &zErrMsg)){
 		perror("error in sqlite_exec");
 		sqlite3_free(zErrMsg);
@@ -473,8 +527,11 @@ int dbcount2(sqlite3 *db, char *UA)              //Returns the number of existin
 		return (EXIT_FAILURE);
 	}
 		
-	snprintf(dbcomm, sizeof(char)*512, "SELECT count(*) FROM user_agent WHERE UA = '%s' ", UA);
-	
+	ssize_t cou = snprintf(dbcomm, sizeof(char)*512, "SELECT count(*) FROM user_agent WHERE UA = '%s' ", UA);
+	if (cou > sizeof(char)*512 || cou == -1) {
+		perror("snprintf riga 532");
+		return EXIT_FAILURE;
+	}
 	if (sqlite3_exec(db, dbcomm, callbackcount2, (void*)res, &zErrMsg)){
 		perror("error in sqlite_exec");
 		sqlite3_free(zErrMsg);
@@ -496,7 +553,11 @@ int callbackfUA (void * res, int argc, char **argv, char **azColName)
 	} 
 	
 	char * s=(char *)res;
-	snprintf(s, sizeof(char)*512, "%s",  argv[0]);
+	ssize_t cou = snprintf(s, sizeof(char)*512, "%s",  argv[0]);
+	if (cou > sizeof(char)*512 || cou == -1) {
+		perror("snprintf riga 558");
+		return EXIT_FAILURE;
+	}
 	return EXIT_SUCCESS;
 }
 
@@ -523,8 +584,11 @@ char *dbfindUA (sqlite3 *db, char *UA)      //Return the maximum resolution supp
 		return "NULL";
 	}
 	
-	snprintf(dbcomm, sizeof(char)*512, "SELECT resolution FROM user_agent WHERE UA='%s'",  UA);
-	
+	ssize_t cou = snprintf(dbcomm, sizeof(char)*512, "SELECT resolution FROM user_agent WHERE UA='%s'",  UA);
+	if (cou > sizeof(char)*512 || cou == -1) {
+		perror("snprintf riga 589");
+		return EXIT_FAILURE;
+	}
 	if (sqlite3_exec(db, dbcomm, callbackfUA, (void*)res, &zErrMsg)){
 		perror("error in sqlite_exec");
 		sqlite3_free(zErrMsg);
@@ -545,7 +609,11 @@ int dbaddUA (sqlite3 *db, char *UA, char *res)         //Add a User Agent and it
 		return (EXIT_FAILURE);
 	}
 	
-	snprintf(dbcomm, sizeof(char)*512, "INSERT INTO user_agent values('%s',  '%s')",  UA, res);
+	ssize_t cou = snprintf(dbcomm, sizeof(char)*512, "INSERT INTO user_agent values('%s',  '%s')",  UA, res);
+	if (cou > sizeof(char)*512 || cou == -1) {
+		perror("snprintf riga 614");
+		return EXIT_FAILURE;
+	}
 	/*
 	printf("%s\n",dbcomm);
 	fflush(stdout);
