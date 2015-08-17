@@ -144,7 +144,7 @@ int main()
 		sqlite3_close(db);
 		exit(EXIT_FAILURE);
 	}
-/*
+
 	struct timeval timeout;      
     timeout.tv_sec = 10;
     timeout.tv_usec = 0;
@@ -154,7 +154,7 @@ int main()
 		sqlite3_close(db);
 		exit(EXIT_FAILURE);
   	}
-*/
+
 
 	int optval = 1;
 	socklen_t optlen = sizeof(optval);
