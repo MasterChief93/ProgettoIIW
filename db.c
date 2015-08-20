@@ -39,17 +39,11 @@ int callbackchk (void *res, int argc, char **argv, char **azColName)
 int dbcontrol(sqlite3 *db, char *image, int flag)              //Controls whether "image" exists in table 'flag' (0=imag, 1=orig, 2=page) and returns 1 if positive, 0 if negative. - Controlla se "image" esiste nella tabella flag (0=imag, 1=orig, 2=page) e restituisce 1 in caso affermativo, 0 in caso negativo
 {
 	char *zErrMsg = 0;
-	char *dbcomm;
-	int *res;
+	char dbcomm[512];
+	int res;
 	char flags[6];
 	
 
-
-	if((dbcomm = malloc(sizeof(char)*512))==NULL)
-	{
-		perror ("Error in Malloc");
-		return (EXIT_FAILURE);
-	}
 
 	if 		(flag==0) snprintf(flags, sizeof(char)*5, "imag");
 	else if (flag==1) snprintf(flags, sizeof(char)*5, "orig");
@@ -64,32 +58,22 @@ int dbcontrol(sqlite3 *db, char *image, int flag)              //Controls whethe
 		perror("snprintf riga 64");
 		return EXIT_FAILURE;
 	}
-	res = malloc(sizeof(int));
-	if (res == NULL) {
-		perror("malloc in db");
-		return EXIT_FAILURE;
-	}
 
-	if (sqlite3_exec(db, dbcomm, callbackchk, (void *)res, &zErrMsg)) {
+	if (sqlite3_exec(db, dbcomm, callbackchk, (void *)&res, &zErrMsg)) {
 		perror("error in sqlite_execcontrol");
 		sqlite3_free(zErrMsg);
 		return EXIT_FAILURE;
 	}
-	free(dbcomm);
-	return *res;
+	return res;
 }
 
 
 int dbadd(sqlite3 *db, struct Record rd, int flag)                //Adds to table 'flag' (0=imag, 1=orig, 2=page) the record rd. - Aggiunge allla tabella flag (0=imag, 1=orig, 2=page) il record rd          
 {
 	char *zErrMsg = 0;
-	char *dbcomm;
+	char dbcomm[512];
 	
-	if((dbcomm = malloc(sizeof(char)*512))==NULL)
-	{
-		perror ("Error in Malloc");
-		return (EXIT_FAILURE);
-	}
+	
 	ssize_t cou;
 	if (flag==0) cou = snprintf(dbcomm, sizeof(char)*512, "INSERT INTO imag values('%s', datetime(), %ld)",  rd.name, rd.acc);
 	else if (flag==1) cou = snprintf(dbcomm, sizeof(char)*512, "INSERT INTO orig values('%s', datetime(), %ld)",  rd.name, rd.acc);  //Non è normale...
@@ -112,7 +96,6 @@ int dbadd(sqlite3 *db, struct Record rd, int flag)                //Adds to tabl
 		sqlite3_free(zErrMsg);
 		return EXIT_FAILURE;
 	}
-	free(dbcomm);
 	return EXIT_SUCCESS;
 	
 }
@@ -120,13 +103,9 @@ int dbadd(sqlite3 *db, struct Record rd, int flag)                //Adds to tabl
 int dbremove(sqlite3 *db, char *image, int flag)                 //Removes from table 'flag' (0=imag, 1=orig, 2=page) "image". - Rimuove dallla tabella flag (0=imag, 1=orig, 2=page) "image"
 {
 	char *zErrMsg = 0;
-	char *dbcomm;
+	char dbcomm[512];
 	
-	if((dbcomm = malloc(sizeof(char)*512))==NULL)
-	{
-		perror ("Error in Malloc");
-		return (EXIT_FAILURE);
-	}
+
 	ssize_t cou;
 	if (flag==0) cou = snprintf(dbcomm, sizeof(char)*512, "DELETE FROM imag WHERE name='%s'", image);
 	else if (flag==1) cou = snprintf(dbcomm, sizeof(char)*512, "DELETE FROM orig WHERE name='%s'", image);
@@ -144,7 +123,6 @@ int dbremove(sqlite3 *db, char *image, int flag)                 //Removes from 
 		sqlite3_free(zErrMsg);
 		return EXIT_FAILURE;
 	}
-	free(dbcomm);
 	return EXIT_SUCCESS;
 }
 
@@ -169,25 +147,10 @@ int callbackremol (void * res, int argc, char **argv, char **azColName)
 int dbremoveoldest(sqlite3 *db)                              //Removes from tables 'imag'and 'page' the least recently used record(s). -Rimuove dalle tabelle 'imag' e 'page' il/i record a cui non si è acceduto da più tempo
 {
 	char *zErrMsg = 0;
-	char *dbcomm, *nameimm, *filepath;
+	char nameimm[512];
+	char filepath[512];
 	
-	if ((nameimm= malloc(sizeof(char)*512))==NULL)
-	{
-		perror ("Error in Malloc");
-		return (EXIT_FAILURE);
-	}
-	
-	if((filepath = malloc(sizeof(char)*512))==NULL)
-	{
-		perror ("Error in Malloc");
-		return (EXIT_FAILURE);
-	}
-	
-	if((dbcomm = malloc(sizeof(char)*512))==NULL)
-	{
-		perror ("Error in Malloc");
-		return (EXIT_FAILURE);
-	}
+
 	
 	if (sqlite3_exec(db, "SELECT name FROM imag WHERE date = (SELECT min(date) FROM imag)", callbackremol, nameimm, &zErrMsg)){
 		perror("error in sqlite_exec");
@@ -215,9 +178,6 @@ int dbremoveoldest(sqlite3 *db)                              //Removes from tabl
 		perror("error in system (rm)");                                  //NOTA: Se non dovesse funzionare, probabilmente andrà aggiunto ./ a nameimm
 		return EXIT_FAILURE;
 	}
-	free(dbcomm);
-	free(nameimm);
-	free(filepath);
 	return EXIT_SUCCESS;
 }
 
@@ -248,21 +208,11 @@ int callbackacc (void * res, int argc, char **argv, char **azColName)
 int dbcheck(sqlite3 *db, char *image, char *origimag )           //Calls dbcontrol, updates the acces date/add the record on 'imag'and 'page' and updates the acces numer on 'orig'. -Chiama dbcontrol, aggiorna la data d'accesso/aggiunge il record su 'imag' e 'page' ed aggiorna il numero di accessi su 'orig'
 {
 	char *zErrMsg = 0;
-	char *dbcomm;
-	long *acc;
+	char dbcomm[512];
+	long acc;
 	int check,check2;
 	ssize_t cou;
-	if((dbcomm = malloc(sizeof(char)*512))==NULL)
-	{
-		perror ("Error in Malloc");
-		return (EXIT_FAILURE);
-	}
 	
-	acc = malloc(sizeof(long));
-	if (acc == NULL) {
-		perror("malloc in db");
-		return EXIT_FAILURE;
-	}
 	
 	check = dbcontrol(db, image, 0);
 	if (check == 1)
@@ -272,13 +222,13 @@ int dbcheck(sqlite3 *db, char *image, char *origimag )           //Calls dbcontr
 		perror("snprintf riga 272");
 		return EXIT_FAILURE;
 	}
-	if (sqlite3_exec(db, dbcomm, callbackacc, (void *)acc, &zErrMsg)){
+	if (sqlite3_exec(db, dbcomm, callbackacc, (void *)&acc, &zErrMsg)){
 		perror("error in sqlite_exec1");
 		sqlite3_free(zErrMsg);
 		return EXIT_FAILURE;
 		}
 		
-		cou = snprintf(dbcomm, sizeof(char)*512, "UPDATE imag SET date = datetime(), acc = %ld  WHERE name= '%s'", *acc, image);
+		cou = snprintf(dbcomm, sizeof(char)*512, "UPDATE imag SET date = datetime(), acc = %ld  WHERE name= '%s'", acc, image);
 		if (cou > sizeof(char)*512 || cou == -1) {
 		perror("snprintf riga 283");
 		return EXIT_FAILURE;
@@ -303,13 +253,13 @@ int dbcheck(sqlite3 *db, char *image, char *origimag )           //Calls dbcontr
 		perror("snprintf riga 303");
 		return EXIT_FAILURE;
 		}
-	if (sqlite3_exec(db, dbcomm, callbackacc, (void *)acc, &zErrMsg)){
+	if (sqlite3_exec(db, dbcomm, callbackacc, (void *)&acc, &zErrMsg)){
 		perror("error in sqlite_exec3");
 		sqlite3_free(zErrMsg);
 		return EXIT_FAILURE;
 		}
 		
-		cou = snprintf(dbcomm, sizeof(char)*512, "UPDATE page SET date = datetime(), acc = %ld  WHERE name= '%s'", *acc, image);
+		cou = snprintf(dbcomm, sizeof(char)*512, "UPDATE page SET date = datetime(), acc = %ld  WHERE name= '%s'", acc, image);
 		if (cou > sizeof(char)*512 || cou == -1) {
 		perror("snprintf riga 314");
 		return EXIT_FAILURE;
@@ -328,7 +278,7 @@ int dbcheck(sqlite3 *db, char *image, char *origimag )           //Calls dbcontr
 	}
 	
 	cou = snprintf(dbcomm, sizeof(char)*512, "SELECT acc FROM orig WHERE name = '%s'",  origimag);
-	if (sqlite3_exec(db, dbcomm, callbackacc, (void *)acc, &zErrMsg)){
+	if (sqlite3_exec(db, dbcomm, callbackacc, (void *)&acc, &zErrMsg)){
 		perror("error in sqlite_exec5");
 		sqlite3_free(zErrMsg);
 		return EXIT_FAILURE;
@@ -337,7 +287,7 @@ int dbcheck(sqlite3 *db, char *image, char *origimag )           //Calls dbcontr
 		perror("snprintf riga 337");
 		return EXIT_FAILURE;
 	}
-	cou = snprintf(dbcomm, sizeof(char)*512, "UPDATE orig SET acc = %ld WHERE name= '%s'", *acc, origimag);
+	cou = snprintf(dbcomm, sizeof(char)*512, "UPDATE orig SET acc = %ld WHERE name= '%s'", acc, origimag);
 	if (cou > sizeof(char)*512 || cou == -1) {
 		perror("snprintf riga 342");
 		return EXIT_FAILURE;
@@ -347,7 +297,6 @@ int dbcheck(sqlite3 *db, char *image, char *origimag )           //Calls dbcontr
 		sqlite3_free(zErrMsg);
 		return EXIT_FAILURE;
 	}
-	free(dbcomm);
 	return check;
 }
 
@@ -379,25 +328,15 @@ int callbackcount (void * res, int argc, char **argv, char **azColName)
 int dbcount(sqlite3 *db, int flag)              //Returns the number of existing records in 'flag' (0=imag, 1=orig, 2=page) table. - Restituisce il numero di record esistenti nella tabella flag (0=imag, 1=orig, 2=page)
 {
 	char *zErrMsg = 0;
-	char *dbcomm;
-	int *res;
+	char dbcomm[512];
+	int res;
 	char flags[6];
 	
-	if((dbcomm = malloc(sizeof(char)*512))==NULL)
-	{
-		perror ("Error in Malloc");
-		return (EXIT_FAILURE);
-	}
 	
-	if((res = malloc(sizeof(int)))==NULL)
-	{
-		perror ("Error in Malloc");
-		return (EXIT_FAILURE);
-	}
 	ssize_t cou;
-	if (flag==0) cou = snprintf(flags, sizeof(char)*10, "imag");
-	else if (flag==1) cou = snprintf(flags, sizeof(char)*10, "orig");
-	else if (flag==2) cou = snprintf(flags, sizeof(char)*10, "page");
+	if (flag==0) cou = snprintf(flags, sizeof(char)*5, "imag");
+	else if (flag==1) cou = snprintf(flags, sizeof(char)*5, "orig");
+	else if (flag==2) cou = snprintf(flags, sizeof(char)*5, "page");
 	else {
 		fprintf(stderr, "Error in dbcontrol: wrong flag value");
 		exit(EXIT_FAILURE);
@@ -412,13 +351,12 @@ int dbcount(sqlite3 *db, int flag)              //Returns the number of existing
 		return EXIT_FAILURE;
 	}
 	
-	if (sqlite3_exec(db, dbcomm, callbackcount, (void*)res, &zErrMsg)){
+	if (sqlite3_exec(db, dbcomm, callbackcount, (void*)&res, &zErrMsg)){
 		perror("error in sqlite_exec");
 		sqlite3_free(zErrMsg);
 		return EXIT_FAILURE;
 	}
-	free(dbcomm);
-	return *res;
+	return res;
 }
 
 int callbacksel (void * res, int argc, char **argv, char **azColName)
@@ -443,45 +381,39 @@ int callbacksel (void * res, int argc, char **argv, char **azColName)
 char *dbselect(sqlite3 *db, char *image, int flag)      //Returns the record of "image" from the table 'flag' (0=imag, 1=orig, 2=page) - Restituisce il record di "image" dalla tabella 'flag' (0=imag, 1=orig, 2=page)
 {
 	char *zErrMsg = 0;
-	char *dbcomm;
+	char dbcomm[512];
 	char *res;
 	char flags[6];
 	
-	if((dbcomm = malloc(sizeof(char)*512))==NULL)
+	if((res= malloc(sizeof(char)*512))==NULL)
 	{
 		perror ("Error in Malloc");
 		return NULL;
 	}
 	
-	if((res = malloc(sizeof(char)*512))==NULL)
-	{
-		perror ("Error in Malloc");
-		return NULL;
-	}
 	ssize_t cou;
-	if (flag==0) cou = snprintf(flags, sizeof(char)*10, "imag");
-	else if (flag==1) cou = snprintf(flags, sizeof(char)*10, "orig");
-	else if (flag==1) cou = snprintf(flags, sizeof(char)*10, "page");
+	if (flag==0) cou = snprintf(flags, sizeof(char)*5, "imag");
+	else if (flag==1) cou = snprintf(flags, sizeof(char)*5, "orig");
+	else if (flag==1) cou = snprintf(flags, sizeof(char)*5, "page");
 	else {
 		fprintf(stderr, "Error in dbcontrol: wrong flag value");
 		exit(EXIT_FAILURE);
 	}
 	if (cou > sizeof(char)*512 || cou == -1) {
 		perror("snprintf riga 470");
-		return EXIT_FAILURE;
+		return NULL;
 	}
 	
 	cou = snprintf(dbcomm, sizeof(char)*512, "SELECT (*) FROM %s WHERE name='%s'", flags, image);
 	if (cou > sizeof(char)*512 || cou == -1) {
 		perror("snprintf riga 476");
-		return EXIT_FAILURE;
+		return NULL;
 	}
 	if (sqlite3_exec(db, dbcomm, callbacksel, (void*)res, &zErrMsg)){
 		perror("error in sqlite_exec");
 		sqlite3_free(zErrMsg);
 		return NULL;
 	}
-	free(dbcomm);
 	return res;
 }
 
@@ -512,33 +444,22 @@ int callbackcount2 (void * res, int argc, char **argv, char **azColName)
 int dbcount2(sqlite3 *db, char *UA)              //Returns the number of existing records in user_agent matching UA. - Restituisce il numero di record esistenti in user agent che corrispondono a UA
 {
 	char *zErrMsg = 0;
-	char *dbcomm;
-	int *res;
+	char dbcomm[512];
+	int res;
 	
-	if((dbcomm = malloc(sizeof(char)*512))==NULL)
-	{
-		perror ("Error in Malloc");
-		return (EXIT_FAILURE);
-	}
 	
-	if((res = malloc(sizeof(int)))==NULL)
-	{
-		perror ("Error in Malloc");
-		return (EXIT_FAILURE);
-	}
 		
 	ssize_t cou = snprintf(dbcomm, sizeof(char)*512, "SELECT count(*) FROM user_agent WHERE UA = '%s' ", UA);
 	if (cou > sizeof(char)*512 || cou == -1) {
 		perror("snprintf riga 532");
 		return EXIT_FAILURE;
 	}
-	if (sqlite3_exec(db, dbcomm, callbackcount2, (void*)res, &zErrMsg)){
+	if (sqlite3_exec(db, dbcomm, callbackcount2, (void*)&res, &zErrMsg)){
 		perror("error in sqlite_exec");
 		sqlite3_free(zErrMsg);
 		return EXIT_FAILURE;
 	}
-	free(dbcomm);
-	return *res;
+	return res;
 }
 
 int callbackfUA (void * res, int argc, char **argv, char **azColName)
@@ -564,7 +485,7 @@ int callbackfUA (void * res, int argc, char **argv, char **azColName)
 char *dbfindUA (sqlite3 *db, char *UA)      //Return the maximum resolution supported by the User Agent - Restituisce la massima risoluzione supportata dall' User Agent.
 {
 	char *zErrMsg = 0;
-	char *dbcomm;
+	char dbcomm[512];
 	char *res;
 	
 	if (dbcount2(db, UA) == 0)           //If the User Agent isn't found in the db, return NULL - Se l'User Agent non è trovato nel db, ritorna NULL
@@ -572,42 +493,31 @@ char *dbfindUA (sqlite3 *db, char *UA)      //Return the maximum resolution supp
 		return "NULL";
 	}
 
-	if((dbcomm = malloc(sizeof(char)*512))==NULL)
+	if((res= malloc(sizeof(char)*512))==NULL)
 	{
 		perror ("Error in Malloc");
-		return "NULL";
-	}
-	
-	if((res = malloc(sizeof(char)*512))==NULL)
-	{
-		perror ("Error in Malloc");
-		return "NULL";
+		return NULL;
 	}
 	
 	ssize_t cou = snprintf(dbcomm, sizeof(char)*512, "SELECT resolution FROM user_agent WHERE UA='%s'",  UA);
 	if (cou > sizeof(char)*512 || cou == -1) {
 		perror("snprintf riga 589");
-		return EXIT_FAILURE;
+		return NULL;
 	}
-	if (sqlite3_exec(db, dbcomm, callbackfUA, (void*)res, &zErrMsg)){
+	if (sqlite3_exec(db, dbcomm, callbackfUA, (void*)&res, &zErrMsg)){
 		perror("error in sqlite_exec");
 		sqlite3_free(zErrMsg);
 		return "NULL";
 	}
-	free(dbcomm);
 	return res;
 }
 
 int dbaddUA (sqlite3 *db, char *UA, char *res)         //Add a User Agent and its  supported maximum resolution to the database - Aggiunge un User Agent e la sua risoluzione massima supportata al database.
 {
 	char *zErrMsg = 0;
-	char *dbcomm;
+	char dbcomm[512];
 	
-	if((dbcomm = malloc(sizeof(char)*512))==NULL)
-	{
-		perror ("Error in Malloc");
-		return (EXIT_FAILURE);
-	}
+	
 	
 	ssize_t cou = snprintf(dbcomm, sizeof(char)*512, "INSERT INTO user_agent values('%s',  '%s')",  UA, res);
 	if (cou > sizeof(char)*512 || cou == -1) {
@@ -625,7 +535,6 @@ int dbaddUA (sqlite3 *db, char *UA, char *res)         //Add a User Agent and it
 		sqlite3_free(zErrMsg);
 		return EXIT_FAILURE;
 	}
-	free(dbcomm);
 	return EXIT_SUCCESS;
 }
 
