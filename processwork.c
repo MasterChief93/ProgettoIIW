@@ -106,11 +106,7 @@ int Process_Work(int lsock, int fdlock, struct Config *cfg,  int fdl, sqlite3 *d
 	}
 
 	errno=0;	
-	//if (tss == NULL) {
-	//	perror("malloc");
-	//	exit(EXIT_FAILURE);
-	//}
-	
+
 	tss->conn_sd = -1;
 	tss->count = cfg->Min_Thread_Num; 								//prima o dopo?
 	tss->fdl = fdl;
@@ -137,16 +133,6 @@ int Process_Work(int lsock, int fdlock, struct Config *cfg,  int fdl, sqlite3 *d
 	int value;
 	while (1==1)
 	{
-		//while (1==1)
-		//{
-		//sem_getvalue(sem,&value);
-		//printf("Ciao cicci. Prima di entrare il semaforo vale %lld, %d\n", (long long int) getpid(), value);
-		//fflush(stdout);
-		//if (sem_wait(sem) == -1) {
-		//	perror("sem_wait");
-		//	exit(EXIT_FAILURE);                                          //O permettiamo un certo numero di errori 
-		//}                   
-		//sem_getvalue(sem,&value);
 		printf("Ciao cicci sono in attesa %lld\n", (long long int) getpid());
 		fflush(stdout);                                             //Andrà implementato un semaforo tra i processi per evitare l'effetto "Thundering Herd"
 		if (lockf(fdlock, F_LOCK,0) == -1) {
@@ -165,34 +151,25 @@ int Process_Work(int lsock, int fdlock, struct Config *cfg,  int fdl, sqlite3 *d
 					perror("lockf");
 					exit(EXIT_FAILURE);
 				}
-				//  if (sem_post(sem) == -1) {
-				// 	perror("sem_post");                                  //Verficare se la chiusura improvvisa di un processo in questo punto non rende il semaforo inutilizzabile (posto a 0 con nessuno che possa incrementarlo)
-				// 	exit(EXIT_FAILURE);
-				// }
-				 exit(EXIT_FAILURE);  
+				exit(EXIT_FAILURE);  
 			}                                                            //Too many failures, restart - Troppi fallimenti, ricomincia
 		}
-		//printf("Ho acchiappato la connessione %lld\n",(long long int) getpid());
-		//fflush(stdout);
+		
 		if (lockf(fdlock, F_ULOCK,0) == -1) {
 			perror("lockf");
 			exit(EXIT_FAILURE);
 		}
 		printf("Ciao cicci ho lasciato il lock %lld\n", (long long int) getpid());
 		fflush(stdout);
-		// if (sem_post(sem) == -1) {
-		// 	perror("sem_post");                                          //Verficare se la chiusura improvvisa di un processo in questo punto non rende il semaforo inutilizzabile (posto a 0 con nessuno che possa incrementarlo)
-		// 	exit(EXIT_FAILURE);
-		// }
-		// sem_getvalue(sem,&value);
-		// printf("Ho rilasciato il semaforo (%lld) e il suo valore è %d\n",(long long int) getpid(), value);
-		// fflush(stdout);
+		
 		if (pthread_mutex_lock(&mtx_struct) < 0) {
 			perror("pthread_mutex_lock");
 			exit(EXIT_FAILURE);
 		}
 		tss->conn_sd = connsd;
-		countt=(tss->count)+1;
+		//countt contains the number of free threads (the -1 prevents the decreasing of the counter that will happen in the thread)
+		countt = (tss->count) - 1;
+
 		if (pthread_mutex_unlock(&mtx_struct) < 0) {
 			perror("pthread_mutex_unlock");
 			exit(EXIT_FAILURE);
@@ -203,7 +180,7 @@ int Process_Work(int lsock, int fdlock, struct Config *cfg,  int fdl, sqlite3 *d
 			exit(EXIT_FAILURE);
 		}
 		
-		if ((countt<= (int) (0.1*thread_num)) && (thread_num<cfg->Max_Thread_Num))       //If 90% of the threads are busy, and MAX_THREAD_NUMBER hasn't been reached, increase the pool - Se il 90% dei thread sono impegnati, e non si è arrivati a MAX_THREAD_NUM, incrementa il pool
+		if ((countt <= (int) (0.1*thread_num)) && (thread_num<cfg->Max_Thread_Num))       //If 90% of the threads are busy, and MAX_THREAD_NUMBER hasn't been reached, increase the pool - Se il 90% dei thread sono impegnati, e non si è arrivati a MAX_THREAD_NUM, incrementa il pool
 		{
 			if (pthread_mutex_lock(&mtx_struct) < 0) {
 				perror("pthread_mutex_lock");
@@ -228,20 +205,3 @@ int Process_Work(int lsock, int fdlock, struct Config *cfg,  int fdl, sqlite3 *d
 		
 	}
 }
-		//}
-		/*while (1=1)
-	
-			//Prendi Semaforo_Thread[i]
-			if (tss[i]->conn_sd==-1){
-				tss[i]->conn_sd = connsd;
-				round=0
-			}
-			//Rilascia Semaforo_Thread[i]
-			else round++
-			if (round=(thread_num-(int)(0.1*thread_num)))                    //Se il 90% dei thread sono impegnati, incrementa il pool
-			{
-				//Add Thread(THREAD_INCREASE)                                //Realloc per tid e thread_struct. Creare thread. Aggiornare thread_num
-			}
-			
-			i=(i+1)%thread_num;
-		}*/

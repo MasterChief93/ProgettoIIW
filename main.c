@@ -54,17 +54,7 @@ int main()
 		perror("Error in closing error.log");
 		return (EXIT_FAILURE);
 	}
-	
-	/*
-	if ((cfg=malloc(sizeof(struct Config)))==NULL)
-	{
-		perror ("Error in Malloc");
-		return (EXIT_FAILURE);
-	}
-	*/
-	
-
-	
+		
 	if ((mem=shmget(IPC_PRIVATE, sizeof(struct Config), O_CREAT|0666))==-1)
 	{
 		perror("Error in shmget");
@@ -177,27 +167,7 @@ int main()
 		sqlite3_close(db);
 		return (EXIT_FAILURE);
 	}
-	//This and the two after: Semaphore to manage the various processes, mostly to avoid the "thundering herd" effect on the Listen - Questo ed i due successivi: Semaforo per gestire i vari processi, principalmente per evitare l'effetto "Thundering Herd" sulla Listen.
-	
-	// if ((mem=shmget(IPC_PRIVATE, sizeof(sem_t), O_CREAT|0666))==-1)     
-	// {
-	// 	perror("Error in shmget");
-	// 	sqlite3_close(db);
-	// 	return (EXIT_FAILURE);
-	// }
-	
-	// if ((semaphore=shmat(mem, NULL, 0))==NULL)
-	// {
-	// 	perror("Error in shmat");
-	// 	sqlite3_close(db);
-	// 	return (EXIT_FAILURE);
-	// }
-	
-	// if (sem_init(semaphore, 1, 1) == -1) {
-	// 		perror("sem_init");
-	// 		sqlite3_close(db);
-	// 		return EXIT_FAILURE;
-	// 	}
+
 	int fdlock = open("lock",O_RDWR);
 	if (fdlock == -1) {
 		perror("open");

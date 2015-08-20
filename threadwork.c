@@ -51,9 +51,9 @@ int Thread_Work(int connsd, int fdl, sqlite3 *db, char *orig, char *modif)
 		nleft = BUFF_SIZE;
 
 		FD_ZERO(&rfds);
-        FD_SET(connsd, &rfds);
+	    FD_SET(connsd, &rfds);
 
-        if (select(connsd+1, &rfds, NULL, NULL, NULL)) {  						//If there is a socket avalaible for reading
+	    if (select(connsd+1, &rfds, NULL, NULL, NULL)) {  						//If there is a socket avalaible for reading
 			while(nleft > 0) {
 
 				//Check if it is true that it is avalaible
@@ -121,7 +121,7 @@ int Thread_Work(int connsd, int fdl, sqlite3 *db, char *orig, char *modif)
 		char *user_agent_intro;		//It will contain "User Agent: " string in order to find the right line in the header
 		char *user_agent;			//It will contain the User Agent string that we need
 
-	
+
 		char *method_name;			//GET, HEAD, etc.
 		char *resource;				//The resource requested ("/","/favicon.ico",etc.)
 
@@ -360,6 +360,6 @@ int Thread_Work(int connsd, int fdl, sqlite3 *db, char *orig, char *modif)
 	//}	
 	printf("Ho finito. Arrivederci\n");
 	fflush(stdout);
-	return shutdown_sequence(connsd);
+return shutdown_sequence(connsd);
 }
 
