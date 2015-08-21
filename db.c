@@ -144,7 +144,7 @@ int callbackremol (void * res, int argc, char **argv, char **azColName)
 }
 
 
-int dbremoveoldest(sqlite3 *db)                              //Removes from tables 'imag'and 'page' the least recently used record(s). -Rimuove dalle tabelle 'imag' e 'page' il/i record a cui non si è acceduto da più tempo
+int dbremoveoldest(sqlite3 *db, int fdl)                              //Removes from tables 'imag'and 'page' the least recently used record(s). -Rimuove dalle tabelle 'imag' e 'page' il/i record a cui non si è acceduto da più tempo
 {
 	char *zErrMsg = 0;
 	char nameimm[512];
@@ -169,6 +169,8 @@ int dbremoveoldest(sqlite3 *db)                              //Removes from tabl
 	
 	dbremove(db, nameimm, 2);
 	
+	dprintf("%s image correctly removed from db",nameimm);
+
 	ssize_t cou = snprintf(filepath, sizeof(char)*512, "/bin/rm %s.*", nameimm);       //Removes the files from the system - Rimuove i file dal sistema
 	if (cou > sizeof(char)*512 || cou == -1) {
 		perror("snprintf riga 211");
@@ -178,6 +180,8 @@ int dbremoveoldest(sqlite3 *db)                              //Removes from tabl
 		perror("error in system (rm)");                                  //NOTA: Se non dovesse funzionare, probabilmente andrà aggiunto ./ a nameimm
 		return EXIT_FAILURE;
 	}
+	dprintf("%s image correctly removed from the disk",nameimm);
+
 	return EXIT_SUCCESS;
 }
 
@@ -479,6 +483,7 @@ int callbackfUA (void * res, int argc, char **argv, char **azColName)
 		perror("snprintf riga 558");
 		return EXIT_FAILURE;
 	}
+
 	return EXIT_SUCCESS;
 }
 
@@ -496,15 +501,17 @@ char *dbfindUA (sqlite3 *db, char *UA)      //Return the maximum resolution supp
 	if((res= malloc(sizeof(char)*512))==NULL)
 	{
 		perror ("Error in Malloc");
-		return NULL;
+		return "NULL";
 	}
 	
-	ssize_t cou = snprintf(dbcomm, sizeof(char)*512, "SELECT resolution FROM user_agent WHERE UA='%s'",  UA);
+	ssize_t cou = snprintf(dbcomm, sizeof(char)*512, "SELECT resolution FROM user_agent WHERE UA = '%s'",  UA);
 	if (cou > sizeof(char)*512 || cou == -1) {
 		perror("snprintf riga 589");
-		return NULL;
+		return "NULL";
 	}
-	if (sqlite3_exec(db, dbcomm, callbackfUA, (void*)&res, &zErrMsg)){
+	printf("%s\n",dbcomm);
+	fflush(stdout);
+	if (sqlite3_exec(db, dbcomm, callbackfUA, (void*)res, &zErrMsg)){
 		perror("error in sqlite_exec");
 		sqlite3_free(zErrMsg);
 		return "NULL";

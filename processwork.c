@@ -73,7 +73,8 @@ void *thread_work(void *arg) {
 			perror("pthread_mutex_unlock");
 			exit(EXIT_FAILURE);
 		}
-		printf("Il socket e: %d\n",connsd);
+		printf("Il fdl e: %d\n",fdl);
+		fflush(stdout);
 		Thread_Work(connsd, fdl, db, orig, modif);
 		//Leggere richiesta e far partire funzione adatta (unica funzione nel nostro caso), presente su altro file (per modularità)
 		//Aggiornare Log

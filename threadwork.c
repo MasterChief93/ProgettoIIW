@@ -10,6 +10,8 @@
 #include <sys/stat.h>
 #include <sys/socket.h>
 #include <sqlite3.h>
+#include <arpa/inet.h>
+#include <time.h>
 
 #include "threadwork.h"    //Nostro
 #include "processwork.h"
@@ -39,6 +41,15 @@ int Thread_Work(int connsd, int fdl, sqlite3 *db, char *orig, char *modif)
 	//for (;;) {
 		ssize_t readn, writen;
 		size_t nleft;
+
+		char logstring[1024];
+
+		struct sockaddr_in addr;
+    	socklen_t addr_size = sizeof(struct sockaddr_in);
+    	int ip = getpeername(connsd, (struct sockaddr *)&addr, &addr_size);
+    	char clientip[20];
+    	strcpy(clientip,inet_ntoa(addr.sin_addr));
+
 
 		char buff[BUFF_SIZE];
 		
@@ -120,13 +131,13 @@ int Thread_Work(int connsd, int fdl, sqlite3 *db, char *orig, char *modif)
 		char *user_agent_line;		//It will contain the whole "User Agent" line in the header
 		char *user_agent_intro;		//It will contain "User Agent: " string in order to find the right line in the header
 		char *user_agent;			//It will contain the User Agent string that we need
-
+		char rline_copy[100];			//It will contain the request line previously obtained in order to use it inside the log
 
 		char *method_name;			//GET, HEAD, etc.
 		char *resource;				//The resource requested ("/","/favicon.ico",etc.)
 
 		request_line = strtok_r(buff,"\r\n",&saveptr);
-		
+		strcpy(rline_copy,request_line);
 		//The buff could be shortest than usual so the request_line couldn't even exists
 		if (request_line == NULL) {
 			perror("Not valid request");
@@ -157,6 +168,7 @@ int Thread_Work(int connsd, int fdl, sqlite3 *db, char *orig, char *modif)
 		*  2. It is an HEAD request
 		*  3. It is another request and it is unsupported
 		*/
+
 
 		if (strcmp(method_name,"GET") == 0) {
 
@@ -194,6 +206,7 @@ int Thread_Work(int connsd, int fdl, sqlite3 *db, char *orig, char *modif)
 				
 				//We need to control if the original image is on the database 
 				//There must be no discrepancy between the db and the file on the disk!
+
 				int ispresent = dbcontrol(db,resource,1);
 
 
@@ -246,7 +259,7 @@ int Thread_Work(int connsd, int fdl, sqlite3 *db, char *orig, char *modif)
 					
 					//dbcheck will control if an entry of the resized image already exists
 					int ischeck = dbcheck(db,new_image_name,resource);
-
+		
 					//if the image is not on the db
 					if (ischeck == 0) {
 						resizing(path,new_path,width,height);	//I resize it with the new width and height
@@ -266,12 +279,31 @@ int Thread_Work(int connsd, int fdl, sqlite3 *db, char *orig, char *modif)
 							shutdown_sequence(connsd);
 							return EXIT_FAILURE;
 						}
-					}					
+					}	
+
 					//if the image is on the database and on the disk, go on
 				}
 			}
 
 			//Those struct and variable will be used to obtain the length of the image
+			time_t t;
+			struct tm *tmp;
+			struct tm *result;
+
+			t = time(NULL);
+   			tmp = localtime_r(&t,&result);
+   			if (tmp == NULL) {
+       			perror("localtime");
+       			shutdown_sequence(connsd);
+				return EXIT_FAILURE;
+   			}
+			char timestring[30];
+			if (strftime(timestring,sizeof(timestring),"%d/%b/%Y:%H:%M:%S %z",tmp) == 0) {
+				perror("strftime");
+				shutdown_sequence(connsd);
+				return EXIT_FAILURE;
+			}
+
 			unsigned long fileLen;
 			struct stat fileStat;
 
@@ -336,11 +368,25 @@ int Thread_Work(int connsd, int fdl, sqlite3 *db, char *orig, char *modif)
 			while (len_data > 0) {
 				write_data = send(connsd,&data[move],len_data,MSG_DONTWAIT);
 				if (write_data == -1) continue;
-				printf("Ho scritto %d\n",write_data);
-				fflush(stdout);
 				move += write_data;
 				len_data -= write_data;
 			}
+
+			if (lockf(fdl, F_LOCK,0) == -1) {
+				perror("lockf fdl");
+				shutdown_sequence(connsd);
+				return EXIT_FAILURE;
+			}
+
+			if (flag == 0) dprintf(fdl,"%s - - %s %s 200 %d\n",clientip,timestring,rline_copy,fileLen);
+			else dprintf(fdl,"%s - - %s %s 404 %d\n",clientip,timestring,rline_copy,fileLen);
+
+			if (lockf(fdl, F_ULOCK,0) == -1) {
+				perror("lockf fdl");
+				shutdown_sequence(connsd);
+				return EXIT_FAILURE;
+			}
+
 
 		//If the method is HEAD
 		} else if (strcmp(method_name,"HEAD") == 0) {
