@@ -509,8 +509,7 @@ char *dbfindUA (sqlite3 *db, char *UA)      //Return the maximum resolution supp
 		perror("snprintf riga 589");
 		return "NULL";
 	}
-	printf("%s\n",dbcomm);
-	fflush(stdout);
+	
 	if (sqlite3_exec(db, dbcomm, callbackfUA, (void*)res, &zErrMsg)){
 		perror("error in sqlite_exec");
 		sqlite3_free(zErrMsg);
