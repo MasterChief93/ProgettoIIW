@@ -21,7 +21,7 @@
 #include "parsing.h"
 #include "resizing.h"
 
-#define BUFF_SIZE 2000
+#define BUFF_SIZE 3000
 
 
 int shutdown_sequence(int connsd) {
@@ -43,7 +43,7 @@ int Thread_Work(int connsd, int fdl, sqlite3 *db, char *orig, char *modif)
 {
 	/*READING SEQUENCE BEGIN*/
 	for (;;) {
-		ssize_t readn, writen;
+		ssize_t readn = 0, writen = 0;
 		size_t nleft;
 		int method_flag = 0;
 
@@ -58,7 +58,7 @@ int Thread_Work(int connsd, int fdl, sqlite3 *db, char *orig, char *modif)
 
 		char buff[BUFF_SIZE];
 		
-		//fd_set rfds; //in order to use the select() call
+		memset(buff,0,BUFF_SIZE);
 
 		char *ptr = buff;
 
@@ -66,108 +66,29 @@ int Thread_Work(int connsd, int fdl, sqlite3 *db, char *orig, char *modif)
 
 		nleft = BUFF_SIZE;
 
-		//FD_ZERO(&rfds);
-	    //FD_SET(connsd, &rfds);
 	    printf("sto servendo io: %lld\n",pthread_self());
 	    fflush(stdout);
-	    //if (select(connsd+1, &rfds, NULL, NULL, NULL)) {  						//If there is a socket avalaible for reading
+
 		while(nleft > 0) {
-			printf("Entering cylce and reading\n");
-			fflush(stdout);
 			if ((readn = recv(connsd, ptr, nleft, 0)) > 0) { 
 				nleft -= readn;
 				ptr += readn;
-				printf("reading...\n");
-				fflush(stdout);
-			}
-			if (readn == 0) {
-				printf("connection closed or nothing more to read\n");
-				fflush(stdout);
-				break;
-			}
-			if (readn == -1) {
-				printf("error occurred\n");
-				fflush(stdout);
+				if (*(ptr-2) == '\r' && *(ptr-1) == '\n') {
+					break;
+				} else  {
+					continue;
+				}
+			} else if (readn == 0 || errno != EINTR || readn == -1)  {
 				break;
 			}
 		}
-			//}
-		//}
-	 //    errno = 0;
-	 //    while ((readn = recv(connsd, buff, BUFF_SIZE, MSG_DONTWAIT)) > 0) {
-	 //    	if (errno == EAGAIN || errno == EWOULDBLOCK) {
-	 //    		if (strlen(buff) == 0) {
-		// 			errno = 0; 				//It is important to reset the errno!!
-		// 			continue;
-		// 					//If other things occured than I will terminate the string and exit the cicle	
-		// 			} else break;
-	 //    	}
-	 //    } 
-	   
-		// if (readn == 0) {
-		// 	printf("connection closed by the client\n");
-		// 	fflush(stdout);
+	
 
-		// }
-		// if(readn == -1) {
-		// 	printf("recv failed\n");
-		// 	fflush(stdout);
-
-		// }
 		buff[strlen(buff)-1] = '\0';
+		ptr -= strlen(buff);
 		printf("buff =\n%s\n",buff);
 		fflush(stdout);
-	    /*
-	    //if (select(connsd+1, &rfds, NULL, NULL, NULL)) {  						//If there is a socket avalaible for reading
-			while(nleft > 0) {
-
-				//Check if it is true that it is avalaible
-				//if (FD_ISSET(connsd,&rfds)) { 			  						
-					
-					//I will read as much as I can using the MSG_DONTWAIT flag making the call non-blocking
-					//that means that or the call will succed or it will be closed by the other side
-					if ((readn = recv(connsd, ptr, nleft, MSG_DONTWAIT)) < 0) { 
-
-						//If the non-blocking recv fails, it could set errno with one of the following errorcode
-						if (errno == EAGAIN || errno == EWOULDBLOCK) {
-
-							//This check has been implemented due to an error that happened several times
-							//The buffer was empty even if a new data was sent.
-							//This check gives a sort of second chance to the recv.			
-							if (strlen(buff) == 0) {
-								//FD_SET(connsd,&rfds);
-								errno = 0; 				//It is important to reset the errno!!
-								continue;
-							//If other things occured than I will terminate the string and exit the cicle	
-							} else {
-								*ptr = '\0';
-								break;
-							}
-						// If the conenction has been closed by the client
-						} else if (errno == EINTR) readn = 0;
-						// If other things occured I will simply shutdown the connection
-						else {
-							shutdown_sequence(connsd);
-							return EXIT_FAILURE;
-						}
-					// If I read nothing
-					} else if (readn == 0) break;
-					
-					nleft -= readn;
-					ptr += readn;
-					printf("buff = %s\n",buff);
-					fflush(stdout);
-					//FD_SET(connsd,&rfds);
-					errno = 0;
-				}
-			//}
-		//}
-		
-		//It is a redudant check but it doesn't cost anything, so...
-		if (buff[strlen(buff)-1] != '\0') {
-			buff[strlen(buff)-1] = '\0';
-		}
-		*/
+	    
 		errno = 0;
 
 		//If really nothing has been read I shutdown the connect
@@ -213,6 +134,7 @@ int Thread_Work(int connsd, int fdl, sqlite3 *db, char *orig, char *modif)
 		method_name = strtok_r(request_line," ",&saveptr2); 				
 		resource = strtok_r(NULL," ",&saveptr2);  							//resource will have the resource file name - resource contiene il nome della risorsa
 		user_agent = strtok_r(NULL,"",&saveptr3);   						//it works...
+		
 		
 		/*INFORMATION GATHERING END*/
 		
@@ -369,11 +291,6 @@ int Thread_Work(int connsd, int fdl, sqlite3 *db, char *orig, char *modif)
 		unsigned long fileLen;
 		struct stat fileStat;
 
-		// struct flock lock;
-		// lock.l_type = F_RDLCK;
-  //   	   lock.l_start = 0;
-  //    lock.l_whence = SEEK_SET;
-  //    lock.l_len = 0;
 
 		// fcntl(fileno(image),F_SETLKW,&lock);
 		if (flock(image,LOCK_EX) == -1) {
@@ -386,28 +303,6 @@ int Thread_Work(int connsd, int fdl, sqlite3 *db, char *orig, char *modif)
          	return 1;
         fileLen = fileStat.st_size;
 
-  //       char data[fileLen];		//The data string will be initialized
-		// //char *data_copy; 
-		// //data_copy = data;
-
-		// //The only way to copy the data of the image inside the string data
-
-  //      	ssize_t red, n;
-		// n = fileLen;
-		// while (n > 0) {
-		// 	red = fread(data,1,n,fdopen(image,"r+"));
-		// 	n -= red;
-		// }
-
-		// data = (char *) mmap(NULL,fileLen, PROT_READ,MAP_PRIVATE,fileno(image),0);
-		// if (data == MAP_FAILED) {
-		// 	perror("mmap");
-		// 	shutdown_sequence(connsd);
-		// 	return EXIT_FAILURE;
-		// }
-
-		// lock.l_type = F_UNLCK;
-		// fcntl(fileno(image), F_SETLK, &lock);
 		if (flock(image,LOCK_UN) == -1) {
 		 	perror("lock image unlock");
 		 	shutdown_sequence(connsd);
@@ -416,29 +311,17 @@ int Thread_Work(int connsd, int fdl, sqlite3 *db, char *orig, char *modif)
 
 		
 		
-		char *response;		//The response will contain the HTTP HEADER string of response, of course 
-
-		//Flag will do its job
+		//The response will contain the HTTP HEADER string of response, of course
+		char response[200];
+		ssize_t resp_length;
 		if (flag == 0) {
-			response = malloc(sizeof(char)*(strlen(type)* + strlen("HTTP/1.1 200 OK\r\nContent-Type: %s\r\nContentLength: %d\r\nKeep-Alive: timeout=10\r\nConnection: Keep-Alive\r\n\r\n%s")));
+		  	resp_length = sprintf(response,"HTTP/1.1 200 OK\r\nContent-Type: %s\r\nContent-Length: %d\r\nKeep-Alive: timeout=10\r\nConnection: Keep-Alive\r\n\r\n",type,fileLen);
 		} else {
-			response = malloc(sizeof(char)*(strlen(type)* + strlen("HTTP/1.1 404 Not Found\r\nContent-Type: %s\r\nContentLength: %d\r\nKeep-Alive: timeout=10\r\n,Connection: Keep-Alive\r\n\r\n%s")));
+			resp_length = sprintf(response,"HTTP/1.1 404 Not Found\r\nContent-Type: %s\r\nContent-Length: %d\r\nKeep-Alive: timeout=10\r\n,Connection: Keep-Alive\r\n\r\n",type,fileLen);
 		}
-		if (response == NULL) {
-			perror("malloc");
-			free(response);
-			shutdown_sequence(connsd);
-			return EXIT_FAILURE;
-		}
-
-		char *resp_copy;
-		resp_copy = response;
-		//The same here adding type and fileLen in the string
-		if (flag == 0) {
-			sprintf(response,"HTTP/1.1 200 OK\r\nContent-Type: %s\r\nContentLength: %d\r\nKeep-Alive: timeout=10\r\nConnection: Keep-Alive\r\n\r\n",type,fileLen);
-		} else {
-			sprintf(response,"HTTP/1.1 404 Not Found\r\nContent-Type: %s\r\nContentLength: %d\r\nKeep-Alive: timeout=10\r\nConnection: Keep-Alive\r\n\r\n",type,fileLen);
-		}
+		printf("resp_length = %ld\n",resp_length);
+		fflush(stdout);
+				
 
 		int optval;
 		/* Enable TCP_CORK option on 'sockfd' - subsequent TCP output is corked
@@ -448,15 +331,15 @@ int Thread_Work(int connsd, int fdl, sqlite3 *db, char *orig, char *modif)
 
 		//cicle for writing the response on the socket
 		ssize_t write_resp = 0;
-		ssize_t len_resp = strlen(response);
+		ssize_t len_resp = resp_length;
+		int move = 0;
 		while (len_resp > 0) {
-			write_resp = send(connsd,response,len_resp,MSG_DONTWAIT);
+			write_resp = send(connsd,&response[move],len_resp,MSG_DONTWAIT);
 			if (write_resp == -1) continue;
-			response += write_resp;
+			move += write_resp;
 			len_resp -= write_resp;
 		}
 		
-
 		//cicle for writing the image (or the page) on the socket only if the request is a GET!
 		ssize_t numsend;
 		if ((numsend = sendfile(connsd,image,0,fileLen)) == -1) {
@@ -472,17 +355,6 @@ int Thread_Work(int connsd, int fdl, sqlite3 *db, char *orig, char *modif)
 		optval = 0;
 		setsockopt(connsd, IPPROTO_TCP, TCP_CORK, &optval, sizeof(optval));
 
-		// if (method_flag == 0) {
-		// 	ssize_t write_data;
-		// 	ssize_t len_data = fileLen;
-		// 	int move = 0;
-		// 	while (len_data > 0) {
-		// 		write_data = send(connsd,&data[move],len_data,MSG_DONTWAIT);
-		// 		if (write_data == -1) continue;
-		// 		move += write_data;
-		// 		len_data -= write_data;
-		// 	}
-		// }
 
 		if (lockf(fdl, F_LOCK,0) == -1) {
 			perror("lockf fdl");
@@ -499,17 +371,7 @@ int Thread_Work(int connsd, int fdl, sqlite3 *db, char *orig, char *modif)
 			return EXIT_FAILURE;
 		}
 		printf("Ho finito. Arrivederci\n");
-		fflush(stdout);
-		//return shutdown_sequence(connsd);
-	//If the method is HEAD
-	// } else if (strcmp(method_name,"HEAD") == 0) {
-	// 	printf("Ho fatto le HEAD\n");
-	// 	fflush(stdout);
-		//chiama funzione HEAD
-
-	//If the method is unsupported
-	
+		fflush(stdout);	
 	}	
-
 }
 
