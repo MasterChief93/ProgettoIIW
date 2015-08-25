@@ -11,7 +11,9 @@
 #include <sys/socket.h>
 #include <sqlite3.h>
 #include <arpa/inet.h>
+#include <netinet/tcp.h>
 #include <time.h>
+#include <sys/sendfile.h>
 
 #include "threadwork.h"    //Nostro
 #include "processwork.h"
@@ -19,7 +21,7 @@
 #include "parsing.h"
 #include "resizing.h"
 
-#define BUFF_SIZE 1024
+#define BUFF_SIZE 2000
 
 
 int shutdown_sequence(int connsd) {
@@ -56,7 +58,7 @@ int Thread_Work(int connsd, int fdl, sqlite3 *db, char *orig, char *modif)
 
 		char buff[BUFF_SIZE];
 		
-		fd_set rfds; //in order to use the select() call
+		//fd_set rfds; //in order to use the select() call
 
 		char *ptr = buff;
 
@@ -64,15 +66,63 @@ int Thread_Work(int connsd, int fdl, sqlite3 *db, char *orig, char *modif)
 
 		nleft = BUFF_SIZE;
 
-		FD_ZERO(&rfds);
-	    FD_SET(connsd, &rfds);
+		//FD_ZERO(&rfds);
+	    //FD_SET(connsd, &rfds);
 	    printf("sto servendo io: %lld\n",pthread_self());
 	    fflush(stdout);
-	    if (select(connsd+1, &rfds, NULL, NULL, NULL)) {  						//If there is a socket avalaible for reading
+	    //if (select(connsd+1, &rfds, NULL, NULL, NULL)) {  						//If there is a socket avalaible for reading
+		while(nleft > 0) {
+			printf("Entering cylce and reading\n");
+			fflush(stdout);
+			if ((readn = recv(connsd, ptr, nleft, 0)) > 0) { 
+				nleft -= readn;
+				ptr += readn;
+				printf("reading...\n");
+				fflush(stdout);
+			}
+			if (readn == 0) {
+				printf("connection closed or nothing more to read\n");
+				fflush(stdout);
+				break;
+			}
+			if (readn == -1) {
+				printf("error occurred\n");
+				fflush(stdout);
+				break;
+			}
+		}
+			//}
+		//}
+	 //    errno = 0;
+	 //    while ((readn = recv(connsd, buff, BUFF_SIZE, MSG_DONTWAIT)) > 0) {
+	 //    	if (errno == EAGAIN || errno == EWOULDBLOCK) {
+	 //    		if (strlen(buff) == 0) {
+		// 			errno = 0; 				//It is important to reset the errno!!
+		// 			continue;
+		// 					//If other things occured than I will terminate the string and exit the cicle	
+		// 			} else break;
+	 //    	}
+	 //    } 
+	   
+		// if (readn == 0) {
+		// 	printf("connection closed by the client\n");
+		// 	fflush(stdout);
+
+		// }
+		// if(readn == -1) {
+		// 	printf("recv failed\n");
+		// 	fflush(stdout);
+
+		// }
+		buff[strlen(buff)-1] = '\0';
+		printf("buff =\n%s\n",buff);
+		fflush(stdout);
+	    /*
+	    //if (select(connsd+1, &rfds, NULL, NULL, NULL)) {  						//If there is a socket avalaible for reading
 			while(nleft > 0) {
 
 				//Check if it is true that it is avalaible
-				if (FD_ISSET(connsd,&rfds)) { 			  						
+				//if (FD_ISSET(connsd,&rfds)) { 			  						
 					
 					//I will read as much as I can using the MSG_DONTWAIT flag making the call non-blocking
 					//that means that or the call will succed or it will be closed by the other side
@@ -85,7 +135,7 @@ int Thread_Work(int connsd, int fdl, sqlite3 *db, char *orig, char *modif)
 							//The buffer was empty even if a new data was sent.
 							//This check gives a sort of second chance to the recv.			
 							if (strlen(buff) == 0) {
-								FD_SET(connsd,&rfds);
+								//FD_SET(connsd,&rfds);
 								errno = 0; 				//It is important to reset the errno!!
 								continue;
 							//If other things occured than I will terminate the string and exit the cicle	
@@ -105,17 +155,19 @@ int Thread_Work(int connsd, int fdl, sqlite3 *db, char *orig, char *modif)
 					
 					nleft -= readn;
 					ptr += readn;
-
-					FD_SET(connsd,&rfds);
+					printf("buff = %s\n",buff);
+					fflush(stdout);
+					//FD_SET(connsd,&rfds);
 					errno = 0;
 				}
-			}
-		}
+			//}
+		//}
+		
 		//It is a redudant check but it doesn't cost anything, so...
 		if (buff[strlen(buff)-1] != '\0') {
 			buff[strlen(buff)-1] = '\0';
 		}
-
+		*/
 		errno = 0;
 
 		//If really nothing has been read I shutdown the connect
@@ -197,7 +249,7 @@ int Thread_Work(int connsd, int fdl, sqlite3 *db, char *orig, char *modif)
 		//If it is not the favicon
 		//These variables will be used in both cases
 
-		FILE *image = NULL;			//Will contain the HTML page or the image
+		int image = -1;			//Will contain the HTML page or the image
 		char *type = NULL;			//It will contain the type string that has to be part of HTTP Header
 		
 
@@ -206,7 +258,7 @@ int Thread_Work(int connsd, int fdl, sqlite3 *db, char *orig, char *modif)
 		
 		// In of a non-specific resource request the default.html page will be returned ("text/html" type)
 		if (strcmp(resource,"/") == 0) {
-			image = fopen("default.html","r+");
+			image = open("default.html",O_RDWR);
 			type = "text/html";
 
 		// in case of a specific resource request
@@ -224,11 +276,11 @@ int Thread_Work(int connsd, int fdl, sqlite3 *db, char *orig, char *modif)
 
 
 			if (ispresent == 0) { 					// if the image is not in the database 
-				image = fopen("404.html","r+");		// 404 error page will be returned
+				image = open("404.html",O_RDWR);		// 404 error page will be returned
 				type = "text/html";
 				flag = 1;							
-				if (image == NULL) {  				// If the opening of the 404.html page fails everything will be close
-					perror("fopen");
+				if (image == -1) {  				// If the opening of the 404.html page fails everything will be close
+					perror("open");
 					shutdown_sequence(connsd);
 					return EXIT_FAILURE;
 				}
@@ -239,7 +291,8 @@ int Thread_Work(int connsd, int fdl, sqlite3 *db, char *orig, char *modif)
 
 				//The result of dbfindUA will be copied in resolution if the user-agent is already on the db
 				strcpy(resolution,dbfindUA(db,user_agent));   
-
+				printf("resolution = %s",resolution);
+				fflush(stdout);
 				//If resolution has not be filled by dbfindUA so there is not an entry in the db
 				if (strcmp(resolution,"NULL") == 0) {
 					//libwurfl is called and the useragent with the resolution will be added on the db
@@ -271,7 +324,7 @@ int Thread_Work(int connsd, int fdl, sqlite3 *db, char *orig, char *modif)
 
 				
 				
-				while (image == NULL) {
+				while (image == -1) {
 					//dbcheck will control if an entry of the resized image already exists
 					int ischeck = dbcheck(db,new_image_name,resource);
 		
@@ -280,11 +333,11 @@ int Thread_Work(int connsd, int fdl, sqlite3 *db, char *orig, char *modif)
 						resizing(path,new_path,width,height);	//I resize it with the new width and height
 					}
 
-					image = fopen(new_path,"r+");
+					image = open(new_path,O_RDWR);
 					type = "image/jpeg";
 
 					// but if it is not on the disk
-					if (image == NULL) {	
+					if (image == -1) {	
 						dbremove(db,new_image_name,0);	// I remove the image entry from the db to prevent other discrepancy
 						continue;
 					}
@@ -323,39 +376,46 @@ int Thread_Work(int connsd, int fdl, sqlite3 *db, char *orig, char *modif)
   //    lock.l_len = 0;
 
 		// fcntl(fileno(image),F_SETLKW,&lock);
-		if (flock(fileno(image),LOCK_EX) == -1) {
-		 	perror("lock image unlock");
+		if (flock(image,LOCK_EX) == -1) {
+		 	perror("lock image lock");
 		 	shutdown_sequence(connsd);
 		 	return EXIT_FAILURE;
 		}
 
-		if(fstat(fileno(image),&fileStat) < 0)    
+		if(fstat(image,&fileStat) < 0)    
          	return 1;
         fileLen = fileStat.st_size;
 
-        char data[fileLen];		//The data string will be initialized
-		char *data_copy; 
-		data_copy = data;
+  //       char data[fileLen];		//The data string will be initialized
+		// //char *data_copy; 
+		// //data_copy = data;
 
-		//The only way to copy the data of the image inside the string data
+		// //The only way to copy the data of the image inside the string data
 
-       	ssize_t red, n;
-		n = fileLen;
-		while (n > 0) {
-			red = fread(data,1,n,image);
-			n -= red;
-		}
-		
+  //      	ssize_t red, n;
+		// n = fileLen;
+		// while (n > 0) {
+		// 	red = fread(data,1,n,fdopen(image,"r+"));
+		// 	n -= red;
+		// }
+
+		// data = (char *) mmap(NULL,fileLen, PROT_READ,MAP_PRIVATE,fileno(image),0);
+		// if (data == MAP_FAILED) {
+		// 	perror("mmap");
+		// 	shutdown_sequence(connsd);
+		// 	return EXIT_FAILURE;
+		// }
+
 		// lock.l_type = F_UNLCK;
 		// fcntl(fileno(image), F_SETLK, &lock);
-		if (flock(fileno(image),LOCK_UN) == -1) {
+		if (flock(image,LOCK_UN) == -1) {
 		 	perror("lock image unlock");
 		 	shutdown_sequence(connsd);
 		 	return EXIT_FAILURE;
 		}
 
-		fclose(image);
-
+		
+		
 		char *response;		//The response will contain the HTTP HEADER string of response, of course 
 
 		//Flag will do its job
@@ -380,6 +440,12 @@ int Thread_Work(int connsd, int fdl, sqlite3 *db, char *orig, char *modif)
 			sprintf(response,"HTTP/1.1 404 Not Found\r\nContent-Type: %s\r\nContentLength: %d\r\nKeep-Alive: timeout=10\r\nConnection: Keep-Alive\r\n\r\n",type,fileLen);
 		}
 
+		int optval;
+		/* Enable TCP_CORK option on 'sockfd' - subsequent TCP output is corked
+		until this option is disabled. */
+		optval = 1;
+		setsockopt(connsd, IPPROTO_TCP, TCP_CORK, &optval, sizeof(optval));
+
 		//cicle for writing the response on the socket
 		ssize_t write_resp = 0;
 		ssize_t len_resp = strlen(response);
@@ -390,18 +456,33 @@ int Thread_Work(int connsd, int fdl, sqlite3 *db, char *orig, char *modif)
 			len_resp -= write_resp;
 		}
 		
+
 		//cicle for writing the image (or the page) on the socket only if the request is a GET!
-		if (method_flag == 0) {
-			ssize_t write_data;
-			ssize_t len_data = fileLen;
-			int move = 0;
-			while (len_data > 0) {
-				write_data = send(connsd,&data[move],len_data,MSG_DONTWAIT);
-				if (write_data == -1) continue;
-				move += write_data;
-				len_data -= write_data;
-			}
+		ssize_t numsend;
+		if ((numsend = sendfile(connsd,image,0,fileLen)) == -1) {
+			perror("sendfile");
+			shutdown_sequence(connsd);
+			return EXIT_FAILURE;
 		}
+		printf("%d\n",numsend);
+		fflush(stdout);
+		close(image);
+		
+
+		optval = 0;
+		setsockopt(connsd, IPPROTO_TCP, TCP_CORK, &optval, sizeof(optval));
+
+		// if (method_flag == 0) {
+		// 	ssize_t write_data;
+		// 	ssize_t len_data = fileLen;
+		// 	int move = 0;
+		// 	while (len_data > 0) {
+		// 		write_data = send(connsd,&data[move],len_data,MSG_DONTWAIT);
+		// 		if (write_data == -1) continue;
+		// 		move += write_data;
+		// 		len_data -= write_data;
+		// 	}
+		// }
 
 		if (lockf(fdl, F_LOCK,0) == -1) {
 			perror("lockf fdl");
@@ -419,7 +500,7 @@ int Thread_Work(int connsd, int fdl, sqlite3 *db, char *orig, char *modif)
 		}
 		printf("Ho finito. Arrivederci\n");
 		fflush(stdout);
-		return shutdown_sequence(connsd);
+		//return shutdown_sequence(connsd);
 	//If the method is HEAD
 	// } else if (strcmp(method_name,"HEAD") == 0) {
 	// 	printf("Ho fatto le HEAD\n");
