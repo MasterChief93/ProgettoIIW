@@ -38,12 +38,14 @@ struct thread_struct {
 	int ctrl_flag					//Thanks to this flag there will be a sort of order in the operations
 };
 
+extern sqlite3 *db;
+
 void *thread_work(void *arg) {
 	struct thread_struct *data = (struct thread_struct *) arg;
 	int connsd, fdl;
 	char *orig;
 	char *modif;
-	sqlite3 *db;
+	//sqlite3 *db;
 	printf("Sono un thread!\n");
 	fflush(stdout);
 	while (1==1){
@@ -74,9 +76,9 @@ void *thread_work(void *arg) {
 				connsd = data->conn_sd;
 				data->count -= 1;
 				fdl= data->fdl;
-				db = data->db;
-				orig = "./orig";//data->orig;
-				modif = "./modif";//data->modif;
+				//db = data->db;
+				orig = data->orig;
+				modif = data->modif;
 				data->ctrl_flag = 0;
 				if (pthread_mutex_unlock(&mtx_struct) < 0) {
 					perror("pthread_mutex_unlock");
@@ -113,7 +115,7 @@ void *thread_work(void *arg) {
 	return 0;
 }
 
-int Process_Work(int lsock, int fdlock, struct Config *cfg,  int fdl, sqlite3 *db)
+int Process_Work(int lsock, int fdlock, struct Config *cfg,  int fdl)//, sqlite3 *db)
 {
 	int i, error=0, connsd, thread_num, countt;//, round=0;
 	socklen_t client_len;
@@ -133,7 +135,7 @@ int Process_Work(int lsock, int fdlock, struct Config *cfg,  int fdl, sqlite3 *d
 	tss->conn_sd = -1;
 	tss->count = cfg->Min_Thread_Num; 								//prima o dopo?
 	tss->fdl = fdl;
-	tss->db = db;
+	//tss->db = db;
 	tss->orig = cfg->Orig_Path;
 	tss->modif = cfg->Modified_Path;
 	tss->ctrl_flag = 0;

@@ -28,6 +28,14 @@
 #define MAX_PROLE_NUM 10    //Massimo numero processi concorrenti (oltre al padre). Si suppone che ogni processo si divida in thread.
 */
 
+sqlite3 *db;
+
+void sighandler(int sig) {
+	sqlite3_close(db);
+	printf("server shutdown... database closed\n");
+	fflush(stdout);
+	_exit(EXIT_FAILURE);
+}
 
 int main()
 {
@@ -36,7 +44,7 @@ int main()
 	//pid_t pid[MAX_PROLE_NUM];
 	sem_t *semaphore;
 	struct Config *cfg;
-	sqlite3 *db;
+	//sqlite3 *db;
 
 
 	if ((fde = open("error.log", O_CREAT | O_TRUNC | O_WRONLY, 0666)) == -1) {
@@ -55,13 +63,13 @@ int main()
 		return (EXIT_FAILURE);
 	}
 		
-	if ((mem=shmget(IPC_PRIVATE, sizeof(struct Config), O_CREAT|0666))==-1)
+	if ((mem = shmget(IPC_PRIVATE, sizeof(struct Config), O_CREAT|0666)) == -1)
 	{
 		perror("Error in shmget");
 		return (EXIT_FAILURE);
 	}
 	
-	if ((cfg=shmat(mem, NULL, 0))==NULL)
+	if ((cfg = shmat(mem, NULL, 0))==NULL)
 	{
 		perror("Error in shmat");
 		return (EXIT_FAILURE);
@@ -103,17 +111,17 @@ int main()
 			return (EXIT_FAILURE);
 		}
 	}
-	if ((dbmem = shmget(IPC_PRIVATE, sizeof(db), O_CREAT | 0666))==-1)
-	{
-		perror("Error in shmget");
-		return (EXIT_FAILURE);
-	}
+	// if ((dbmem = shmget(IPC_PRIVATE, sizeof(db), O_CREAT | 0666))==-1)
+	// {
+	// 	perror("Error in shmget");
+	// 	return (EXIT_FAILURE);
+	// }
 	
-	if ((db = shmat(dbmem, NULL, 0))==NULL)
-	{
-		perror("Error in shmat");
-		return (EXIT_FAILURE);
-	}
+	// if ((db = shmat(dbmem, NULL, 0))==NULL)
+	// {
+	// 	perror("Error in shmat");
+	// 	return (EXIT_FAILURE);
+	// }
 	
 
 	if (sqlite3_open("db/images.db", &db)){  //Open the conection to the database - Apre la connessione al database
@@ -122,6 +130,8 @@ int main()
 		return EXIT_FAILURE;
 	}
 	
+	printf("%s %s\n",cfg->Modified_Path, cfg->Orig_Path);
+	fflush(stdout);
 
 	switch (fork())                                                    //Creates a Process to keep under control the size of the cache - Crea un processo per mantenere sotto controllo la grandezza della cache
 			{
@@ -130,7 +140,7 @@ int main()
 					sqlite3_close(db);
 					exit(EXIT_FAILURE);
 				case 0:
-					Garbage_Collector(db, cfg, fdl);
+					Garbage_Collector(/*db,*/ cfg, fdl);
 			}           
 			
 
@@ -208,13 +218,20 @@ int main()
 			case 0:
 				printf("Sono un figlio\n");
 				fflush(stdout);
-				Process_Work(sock, fdlock, cfg, fdal, db);  //Da aggiungere in un nostro header
+				Process_Work(sock, fdlock, cfg, fdal);//, db);  //Da aggiungere in un nostro header
 			default:
 				continue;
 		}
 	}
 	//int status; volendo si può aggiungere lo stato per un resoconto più preciso
-	
+	if (  signal(SIGINT,  sighandler) == SIG_ERR ||         
+          signal(SIGTERM, sighandler) == SIG_ERR ||          
+          signal(SIGQUIT, sighandler) == SIG_ERR ) {        
+          perror("signal");
+          sqlite3_close(db);              
+          return EXIT_FAILURE;                                 
+      } 
+
 	for (;;) {                                          // Whenever a process falls, another rises to take his place - Quando un processo cade, un altro viene creato per prenderne il posto
 		if ((wait(NULL)) != -1) {
 			switch (fork())
@@ -224,7 +241,7 @@ int main()
 					sqlite3_close(db);
 					exit(EXIT_FAILURE);
 				case 0:
-					Process_Work(sock,fdlock, cfg, fdal, db);
+					Process_Work(sock,fdlock, cfg, fdal);//, db);
 				default:
 					continue;
 			}

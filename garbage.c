@@ -15,8 +15,9 @@
 #include "db.h"
 #include "garbage.h"
 
+extern sqlite3 *db;
 
-int Garbage_Collector(sqlite3 *db, struct Config *cfg, int fdl) {     //Every "Garbage_Collection_Frequence" seconds, removes the least recently seen images, untill "Max_Cache_Size" is reached - Ogni "Garbage_Collection_Frequence" secondi rimuove le immagini non accedute da più tempo, fino a raggiungere "Max_Cache_Size"
+int Garbage_Collector(/*sqlite3 *db,*/ struct Config *cfg, int fdl) {     //Every "Garbage_Collection_Frequence" seconds, removes the least recently seen images, untill "Max_Cache_Size" is reached - Ogni "Garbage_Collection_Frequence" secondi rimuove le immagini non accedute da più tempo, fino a raggiungere "Max_Cache_Size"
 	while (1==1){
 		sleep(cfg->Garbage_Collection_Frequence);
 		sqlite3_mutex_enter(sqlite3_db_mutex(db));

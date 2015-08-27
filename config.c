@@ -24,7 +24,8 @@ int Set_Config_Default(int fdc, struct Config *cfg)  //Creates the config.ini fi
 		.Orig_Path = "./orig",               //Probabile errore         
 		.Modified_Path = "./modif"};
 		
-	
+	printf("%s\n",Default.Orig_Path);
+	fflush(stdout);
 	errno=0;
 	if ((streamc = fdopen(fdc, "w+"))==NULL)
 	{
@@ -131,6 +132,16 @@ int Load_Config(int fdc, struct Config *cfg)  //Load in the program the values f
 	
 	if ((temp=malloc(sizeof(char)*1024))==NULL){
 		perror("Error in malloc");
+		return EXIT_FAILURE;
+	}
+
+	if ((cfg->Orig_Path = malloc(128*sizeof(char))) == NULL) {
+		perror("error in malloc");
+		return EXIT_FAILURE;
+	}
+	
+	if ((cfg->Modified_Path = malloc(128*sizeof(char))) == NULL) {
+		perror("error in malloc");
 		return EXIT_FAILURE;
 	}
 	
@@ -266,8 +277,8 @@ int Load_Config(int fdc, struct Config *cfg)  //Load in the program the values f
 		fprintf(stderr, "Error in reading Config from file: unexpected EOF\n");
 		return EXIT_FAILURE;
 	}
-	
-	if (fscanf(streamc, "%s", &(cfg->Orig_Path))!=1)
+
+	if (fscanf(streamc, "%s", cfg->Orig_Path)!=1)
 	{
 		fprintf(stderr, "Error in reading Config from file\n");
 		return EXIT_FAILURE;
@@ -284,7 +295,7 @@ int Load_Config(int fdc, struct Config *cfg)  //Load in the program the values f
 		return EXIT_FAILURE;
 	}
 	
-	if (fscanf(streamc, "%s", &(cfg->Modified_Path))!=1)
+	if (fscanf(streamc, "%s", cfg->Modified_Path)!=1)
 	{
 		fprintf(stderr, "Error in reading Config from file\n");
 		return EXIT_FAILURE;

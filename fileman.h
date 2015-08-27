@@ -10,8 +10,8 @@ struct Config{
 	int Max_Error_Allowed;            //Maximum number of ignorable errors - Massimo numero di errori ignorabili
 	int Max_Cache_Size;                //Maximum number of files that can be kept in the cache - Massimo numero di file che possono essere tenuti in cache
 	int Garbage_Collection_Frequence;  //Time, in seconds, between two sweeps of the garbage collector (cache) - Tempo, in secondi, tra due passate del Garbage Collector (cache)
-	char * Orig_Path;                  //Where are the original images - Dove sono le immagini originali
-	char * Modified_Path;              //Where are the modified images and html pages - Dove sono le pagine html e le immagini modificate
+	char *Orig_Path;                  //Where are the original images - Dove sono le immagini originali
+	char *Modified_Path;              //Where are the modified images and html pages - Dove sono le pagine html e le immagini modificate
 };
 
 extern int Load_Config(int fdc, struct Config *cfg);          //Load in the program the values found in the config.ini file - Carica nel programma i valori trovati sul file config.ini
