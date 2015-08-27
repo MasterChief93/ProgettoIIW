@@ -19,7 +19,7 @@ int callbackchk (void *res, int argc, char **argv, char **azColName)
 		return EXIT_FAILURE;
 	}  
 
-	errno=0;
+	errno = 0;
 	j = strtol(argv[0], &endptr, 0);
 	if (errno!=0)
 	{
@@ -42,6 +42,7 @@ int dbcontrol(sqlite3 *db, char *image, int flag)              //Controls whethe
 	char dbcomm[512];
 	int res;
 	char flags[6];
+	errno = 0;
 	
 
 
@@ -119,7 +120,7 @@ int dbremove(sqlite3 *db, char *image, int flag)                 //Removes from 
 		return EXIT_FAILURE;
 	}
 	if (sqlite3_exec(db, dbcomm, NULL, 0, &zErrMsg)){
-		perror("error in sqlite_exec");
+		perror("error in sqlite_exec4");
 		sqlite3_free(zErrMsg);
 		return EXIT_FAILURE;
 	}
@@ -153,7 +154,7 @@ int dbremoveoldest(sqlite3 *db, int fdl)                              //Removes 
 
 	
 	if (sqlite3_exec(db, "SELECT name FROM imag WHERE date = (SELECT min(date) FROM imag)", callbackremol, nameimm, &zErrMsg)){
-		perror("error in sqlite_exec");
+		perror("error in sqlite_exec5");
 		sqlite3_free(zErrMsg);
 		return EXIT_FAILURE;
 	}
@@ -162,7 +163,7 @@ int dbremoveoldest(sqlite3 *db, int fdl)                              //Removes 
 	
 	
 	if (sqlite3_exec(db, "SELECT name FROM page WHERE date = (SELECT min(date) FROM page)", callbackremol, nameimm, &zErrMsg)){
-		perror("error in sqlite_exec");
+		perror("error in sqlite_exec6");
 		sqlite3_free(zErrMsg);
 		return EXIT_FAILURE;
 	}
@@ -216,7 +217,7 @@ int dbcheck(sqlite3 *db, char *image, char *origimag )           //Calls dbcontr
 	long acc;
 	int check,check2;
 	ssize_t cou;
-	
+	errno = 0;
 	
 	check = dbcontrol(db, image, 0);
 	if (check == 1)
@@ -335,7 +336,7 @@ int dbcount(sqlite3 *db, int flag)              //Returns the number of existing
 	char dbcomm[512];
 	int res;
 	char flags[6];
-	
+	errno = 0;
 	
 	ssize_t cou;
 	if (flag==0) cou = snprintf(flags, sizeof(char)*5, "imag");
@@ -356,7 +357,7 @@ int dbcount(sqlite3 *db, int flag)              //Returns the number of existing
 	}
 	
 	if (sqlite3_exec(db, dbcomm, callbackcount, (void*)&res, &zErrMsg)){
-		perror("error in sqlite_exec");
+		perror("error in sqlite_exec7");
 		sqlite3_free(zErrMsg);
 		return EXIT_FAILURE;
 	}
@@ -414,7 +415,7 @@ char *dbselect(sqlite3 *db, char *image, int flag)      //Returns the record of 
 		return NULL;
 	}
 	if (sqlite3_exec(db, dbcomm, callbacksel, (void*)res, &zErrMsg)){
-		perror("error in sqlite_exec");
+		perror("error in sqlite_exec8");
 		sqlite3_free(zErrMsg);
 		return NULL;
 	}
@@ -459,7 +460,7 @@ int dbcount2(sqlite3 *db, char *UA)              //Returns the number of existin
 		return EXIT_FAILURE;
 	}
 	if (sqlite3_exec(db, dbcomm, callbackcount2, (void*)&res, &zErrMsg)){
-		perror("error in sqlite_exec");
+		perror("error in sqlite_exec9");
 		sqlite3_free(zErrMsg);
 		return EXIT_FAILURE;
 	}
@@ -492,7 +493,8 @@ char *dbfindUA (sqlite3 *db, char *UA)      //Return the maximum resolution supp
 	char *zErrMsg = 0;
 	char dbcomm[512];
 	char *res;
-	
+	errno = 0;
+
 	if (dbcount2(db, UA) == 0)           //If the User Agent isn't found in the db, return NULL - Se l'User Agent non è trovato nel db, ritorna NULL
 	{
 		return "NULL";
@@ -511,7 +513,7 @@ char *dbfindUA (sqlite3 *db, char *UA)      //Return the maximum resolution supp
 	}
 	
 	if (sqlite3_exec(db, dbcomm, callbackfUA, (void*)res, &zErrMsg)){
-		perror("error in sqlite_exec");
+		perror("error in sqlite_exec10");
 		sqlite3_free(zErrMsg);
 		return "NULL";
 	}
@@ -522,7 +524,7 @@ int dbaddUA (sqlite3 *db, char *UA, char *res)         //Add a User Agent and it
 {
 	char *zErrMsg = 0;
 	char dbcomm[512];
-	
+	errno = 0;
 	
 	
 	ssize_t cou = snprintf(dbcomm, sizeof(char)*512, "INSERT INTO user_agent values('%s',  '%s')",  UA, res);
@@ -537,7 +539,7 @@ int dbaddUA (sqlite3 *db, char *UA, char *res)         //Add a User Agent and it
 
 	errno = 0;
 	if (sqlite3_exec(db, dbcomm, NULL, 0, &zErrMsg)){
-		perror("error in sqlite_execcontrol2");
+		perror("error in sqlite_execcontrol3");
 		sqlite3_free(zErrMsg);
 		return EXIT_FAILURE;
 	}

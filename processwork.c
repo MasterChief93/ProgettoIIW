@@ -35,6 +35,7 @@ struct thread_struct {
 	sqlite3 *db;                   //Database Address - Indirizzo del database
 	char *orig;
 	char *modif;
+	int ctrl_flag					//Thanks to this flag there will be a sort of order in the operations
 };
 
 void *thread_work(void *arg) {
@@ -54,26 +55,48 @@ void *thread_work(void *arg) {
 			perror("pthread_cond_wait");
 			exit(EXIT_FAILURE);
 		}
+		
+		// if (pthread_mutex_lock(&mtx_struct) < 0) {
+		// 	perror("pthred_mutex_lock");
+		// 	exit(EXIT_FAILURE);
+		// }
 		if (pthread_mutex_unlock(&mtx_cond) < 0) {
 			perror("pthred_mutex_lock");
 			exit(EXIT_FAILURE);
 		}
-		if (pthread_mutex_lock(&mtx_struct) < 0) {
-			perror("pthred_mutex_lock");
-			exit(EXIT_FAILURE);
-		}
-		connsd = data->conn_sd;
-		data->count -= 1;
-		fdl= data->fdl;
-		db=data->db;
-		orig = "./orig";//data->orig;
-		modif = "./modif";//data->modif;
 
-		if (pthread_mutex_unlock(&mtx_struct) < 0) {
-			perror("pthread_mutex_unlock");
-			exit(EXIT_FAILURE);
+		for (;;) {
+			if (pthread_mutex_lock(&mtx_struct) < 0) {
+				perror("pthread_mutex_lock");
+				exit(EXIT_FAILURE);
+			}
+			if (data->ctrl_flag == 1) {
+				connsd = data->conn_sd;
+				data->count -= 1;
+				fdl= data->fdl;
+				db = data->db;
+				orig = "./orig";//data->orig;
+				modif = "./modif";//data->modif;
+				data->ctrl_flag = 0;
+				if (pthread_mutex_unlock(&mtx_struct) < 0) {
+					perror("pthread_mutex_unlock");
+					exit(EXIT_FAILURE);
+				}
+				break;
+			}
+			if (pthread_mutex_unlock(&mtx_struct) < 0) {
+				perror("pthread_mutex_unlock");
+				exit(EXIT_FAILURE);
+			}
 		}
-	
+		
+
+		// if (pthread_mutex_unlock(&mtx_struct) < 0) {
+		// 	perror("pthread_mutex_unlock");
+		// 	exit(EXIT_FAILURE);
+		// }
+		
+		
 		Thread_Work(connsd, fdl, db, orig, modif);
 		//Leggere richiesta e far partire funzione adatta (unica funzione nel nostro caso), presente su altro file (per modularità)
 		//Aggiornare Log
@@ -113,6 +136,7 @@ int Process_Work(int lsock, int fdlock, struct Config *cfg,  int fdl, sqlite3 *d
 	tss->db = db;
 	tss->orig = cfg->Orig_Path;
 	tss->modif = cfg->Modified_Path;
+	tss->ctrl_flag = 0;
 
 	for(i = 0; i < cfg->Min_Thread_Num; i++) {   //Prethreading - Prethreading
 		if (pthread_create(&tid,NULL,thread_work,tss) < 0) {
@@ -151,10 +175,13 @@ int Process_Work(int lsock, int fdlock, struct Config *cfg,  int fdl, sqlite3 *d
 					perror("lockf");
 					exit(EXIT_FAILURE);
 				}
+				perror("max error reached");
 				exit(EXIT_FAILURE);  
 			}                                                            //Too many failures, restart - Troppi fallimenti, ricomincia
 		}
-		
+		printf ("Ho preso il socket %d io processo %lld\n",connsd,getpid());
+		fflush(stdout);
+		error = 0;   												//error must be reset
 		if (lockf(fdlock, F_ULOCK,0) == -1) {
 			perror("lockf");
 			exit(EXIT_FAILURE);
@@ -162,18 +189,38 @@ int Process_Work(int lsock, int fdlock, struct Config *cfg,  int fdl, sqlite3 *d
 		printf("Ciao cicci ho lasciato il lock %lld\n", (long long int) getpid());
 		fflush(stdout);
 		
-		if (pthread_mutex_lock(&mtx_struct) < 0) {
-			perror("pthread_mutex_lock");
-			exit(EXIT_FAILURE);
-		}
-		tss->conn_sd = connsd;
-		//countt contains the number of free threads (the -1 prevents the decreasing of the counter that will happen in the thread)
-		countt = (tss->count) - 1;
+		// if (pthread_mutex_lock(&mtx_struct) < 0) {
+		// 	perror("pthread_mutex_lock");
+		// 	exit(EXIT_FAILURE);
+		// }
 
-		if (pthread_mutex_unlock(&mtx_struct) < 0) {
-			perror("pthread_mutex_unlock");
-			exit(EXIT_FAILURE);
+		for (;;) {
+			if (pthread_mutex_lock(&mtx_struct) < 0) {
+				perror("pthread_mutex_lock");
+				exit(EXIT_FAILURE);
+			}
+			if (tss->ctrl_flag == 0) {
+				tss->conn_sd = connsd;
+				countt = (tss->count) - 1;
+				tss->ctrl_flag = 1;
+				if (pthread_mutex_unlock(&mtx_struct) < 0) {
+					perror("pthread_mutex_unlock");
+					exit(EXIT_FAILURE);
+				}
+				break;
+			}
+			if (pthread_mutex_unlock(&mtx_struct) < 0) {
+				perror("pthread_mutex_unlock");
+				exit(EXIT_FAILURE);
+			}
 		}
+		//countt contains the number of free threads (the -1 prevents the decreasing of the counter that will happen in the thread)
+		
+
+		// if (pthread_mutex_unlock(&mtx_struct) < 0) {
+		// 	perror("pthread_mutex_unlock");
+		// 	exit(EXIT_FAILURE);
+		// }
 		
 		if (pthread_cond_signal(&cond_variable) < 0) {
 			perror("pthread_cond_signal");

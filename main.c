@@ -31,7 +31,7 @@
 
 int main()
 {
-	int reuse,fde,fdc, sock, i, mem, fdal,fdl;
+	int reuse,fde,fdc, sock, i, mem, dbmem, fdal,fdl;
 	struct sockaddr_in servaddr;
 	//pid_t pid[MAX_PROLE_NUM];
 	sem_t *semaphore;
@@ -103,7 +103,18 @@ int main()
 			return (EXIT_FAILURE);
 		}
 	}
-
+	if ((dbmem = shmget(IPC_PRIVATE, sizeof(db), O_CREAT | 0666))==-1)
+	{
+		perror("Error in shmget");
+		return (EXIT_FAILURE);
+	}
+	
+	if ((db = shmat(dbmem, NULL, 0))==NULL)
+	{
+		perror("Error in shmat");
+		return (EXIT_FAILURE);
+	}
+	
 
 	if (sqlite3_open("db/images.db", &db)){  //Open the conection to the database - Apre la connessione al database
 		perror("error in sqlite_open");
