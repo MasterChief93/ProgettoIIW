@@ -45,6 +45,13 @@ int shutdown_sequence(int connsd) {
 int Thread_Work(int connsd, int fdl, char *orig, char *modif)
 {
 	/*READING SEQUENCE BEGIN*/
+	sqlite3 *db;
+	if (sqlite3_open("db/images.db", &db)) {  //Open the conection to the database - Apre la connessione al database
+		perror("error in sqlite_open");
+		sqlite3_close(db);                    //In any case of server shutdown, close the db connection first - In ogni caso di chiusura del server, chiude anche la connessione al database 
+		return EXIT_FAILURE;
+	}
+
 	for (;;) {
 		ssize_t readn = 0, writen = 0;
 		size_t nleft;
@@ -57,7 +64,6 @@ int Thread_Work(int connsd, int fdl, char *orig, char *modif)
     	int ip = getpeername(connsd, (struct sockaddr *)&addr, &addr_size);
     	char clientip[20];
     	strcpy(clientip,inet_ntoa(addr.sin_addr));
-		sqlite3 *db;
 
 		char buff[BUFF_SIZE];
 		
@@ -93,7 +99,6 @@ int Thread_Work(int connsd, int fdl, char *orig, char *modif)
 		//If really nothing has been read I shutdown the connect
 		if (strlen(buff) == 0) {
 			shutdown_sequence(connsd);
-			sqlite3_close(db);
 			return EXIT_FAILURE;
 		}
 		/*READING SEQUENCE END*/
@@ -117,8 +122,8 @@ int Thread_Work(int connsd, int fdl, char *orig, char *modif)
 		//The buff could be shortest than usual so the request_line couldn't even exists
 		if (request_line == NULL) {
 			perror("Not valid request");
-			sqlite3_close(db);
 			shutdown_sequence(connsd);
+			sqlite3_close(db);
 			return EXIT_FAILURE;
 		}
 
@@ -186,11 +191,7 @@ int Thread_Work(int connsd, int fdl, char *orig, char *modif)
 
 		// in case of a specific resource request
 		} else { 
-			if (sqlite3_open("db/images.db", &db)){  //Open the conection to the database - Apre la connessione al database
-				perror("error in sqlite_open");
-				sqlite3_close(db);                    //In any case of server shutdown, close the db connection first - In ogni caso di chiusura del server, chiude anche la connessione al database 
-				return EXIT_FAILURE;
-			}
+			
 			//TODO il path immagine totale includerà il "punto (.)" iniziale, la cartella prelevata dal config e il nome dell'immagine specificato nella richiesta HTTP
 			char path[256];	  //It will contains the path of the original image 
 		
@@ -198,9 +199,9 @@ int Thread_Work(int connsd, int fdl, char *orig, char *modif)
 			
 			//We need to control if the original image is on the database 
 			//There must be no discrepancy between the db and the file on the disk!
-			sqlite3_mutex_enter(sqlite3_db_mutex(db));
+			//sqlite3_mutex_enter(sqlite3_db_mutex(db));
 			int ispresent = dbcontrol(db,resource,1);
-			sqlite3_mutex_leave(sqlite3_db_mutex(db));
+			//sqlite3_mutex_leave(sqlite3_db_mutex(db));
 
 			if (ispresent == 0) { 					// if the image is not in the database 
 				image = open("404.html",O_RDWR);		// 404 error page will be returned
@@ -218,19 +219,19 @@ int Thread_Work(int connsd, int fdl, char *orig, char *modif)
 				char resolution[128]; //It will contains the resolution of the client in the form of "decimal SPACE decimal"
 
 				//The result of dbfindUA will be copied in resolution if the user-agent is already on the db
-				sqlite3_mutex_enter(sqlite3_db_mutex(db));
+				//sqlite3_mutex_enter(sqlite3_db_mutex(db));
 				strcpy(resolution,dbfindUA(db,user_agent));   
-				sqlite3_mutex_leave(sqlite3_db_mutex(db));
+				//sqlite3_mutex_leave(sqlite3_db_mutex(db));
 
-				printf("resolution = %s",resolution);
+				printf("resolution = %s\n",resolution);
 				fflush(stdout);
 				//If resolution has not be filled by dbfindUA so there is not an entry in the db
 				if (strcmp(resolution,"NULL") == 0) {
 					//libwurfl is called and the useragent with the resolution will be added on the db
 					wurfl_interrogation(user_agent, resolution);
-					sqlite3_mutex_enter(sqlite3_db_mutex(db));
+					//sqlite3_mutex_enter(sqlite3_db_mutex(db));
 					dbaddUA(db,user_agent,resolution);
-					sqlite3_mutex_leave(sqlite3_db_mutex(db));
+					//sqlite3_mutex_leave(sqlite3_db_mutex(db));
 				}
 				
 				// CONTROLLO SE GIA ESISTE A QUELLA RISOLUZIONE con dbcheck (Se non c'è la inserisce da solo) 0 se non c'è (modifico con image magick) o 1 se c'è (e vado diretto al percorso delle pagine)
@@ -259,9 +260,9 @@ int Thread_Work(int connsd, int fdl, char *orig, char *modif)
 				
 				while (image == -1) {
 					//dbcheck will control if an entry of the resized image already exists
-					sqlite3_mutex_enter(sqlite3_db_mutex(db));
+					//sqlite3_mutex_enter(sqlite3_db_mutex(db));
 					int ischeck = dbcheck(db,new_image_name,resource);
-					sqlite3_mutex_leave(sqlite3_db_mutex(db));
+					//sqlite3_mutex_leave(sqlite3_db_mutex(db));
 					//if the image is not on the db
 					if (ischeck == 0) {
 						resizing(path,new_path,width,height);	//I resize it with the new width and height
@@ -272,9 +273,9 @@ int Thread_Work(int connsd, int fdl, char *orig, char *modif)
 
 					// but if it is not on the disk
 					if (image == -1) {	
-						sqlite3_mutex_enter(sqlite3_db_mutex(db));
+						//sqlite3_mutex_enter(sqlite3_db_mutex(db));
 						dbremove(db,new_image_name,0);	// I remove the image entry from the db to prevent other discrepancy
-						sqlite3_mutex_leave(sqlite3_db_mutex(db));
+						//sqlite3_mutex_leave(sqlite3_db_mutex(db));
 						continue;
 					}
 				}
@@ -368,7 +369,6 @@ int Thread_Work(int connsd, int fdl, char *orig, char *modif)
 		ssize_t numsend;
 		if ((numsend = sendfile(connsd,image,0,fileLen)) == -1) {
 			perror("sendfile");
-			sqlite3_close(db);
 			shutdown_sequence(connsd);
 			return EXIT_FAILURE;
 		}

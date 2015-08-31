@@ -32,11 +32,13 @@ struct thread_struct {
 	int conn_sd; 				   //Connection socket - Socket di connessione
 	int count;                     //Available thread counter - Contatore dei thread disponibili
 	int fdl;                       //Logging file - File di logging
-	sqlite3 *db;                   //Database Address - Indirizzo del database
+	//sqlite3 *db;                   //Database Address - Indirizzo del database
 	char *orig;
 	char *modif;
 	int ctrl_flag					//Thanks to this flag there will be a sort of order in the operations
 };
+
+//sqlite3 *db;
 
 
 void *thread_work(void *arg) {
@@ -44,6 +46,7 @@ void *thread_work(void *arg) {
 	int connsd, fdl;
 	char *orig;
 	char *modif;
+	//sqlite3 *db;
 
 	printf("Sono un thread!\n");
 	fflush(stdout);
@@ -119,7 +122,6 @@ int Process_Work(int lsock, int fdlock, struct Config *cfg,  int fdl)//, sqlite3
 	socklen_t client_len;
 	struct sockaddr_in clientaddr;
 	pthread_t tid;                           //[MIN_THREAD_NUM];
-
 	struct thread_struct *tss;               //[MIN_THREAD_NUM];
 	
 	if((tss = malloc(sizeof(struct thread_struct))) == NULL)
@@ -127,6 +129,7 @@ int Process_Work(int lsock, int fdlock, struct Config *cfg,  int fdl)//, sqlite3
 		perror ("Error in Malloc");
 		return (EXIT_FAILURE);
 	}
+
 	
 
 	errno=0;	
@@ -142,6 +145,7 @@ int Process_Work(int lsock, int fdlock, struct Config *cfg,  int fdl)//, sqlite3
 	for(i = 0; i < cfg->Min_Thread_Num; i++) {   //Prethreading - Prethreading
 		if (pthread_create(&tid,NULL,thread_work,tss) < 0) {
 			perror("pthread_create");
+			
 			exit(EXIT_FAILURE);
 		}
 	}
@@ -150,6 +154,7 @@ int Process_Work(int lsock, int fdlock, struct Config *cfg,  int fdl)//, sqlite3
 	
 	if (memset((void*)&clientaddr, 0, sizeof(clientaddr)) == NULL) {
 		perror("memset");
+		
 		exit(EXIT_FAILURE);
 	}
 		
@@ -162,6 +167,7 @@ int Process_Work(int lsock, int fdlock, struct Config *cfg,  int fdl)//, sqlite3
 		fflush(stdout);                                             //Andrà implementato un semaforo tra i processi per evitare l'effetto "Thundering Herd"
 		if (lockf(fdlock, F_LOCK,0) == -1) {
 			perror("lockf");
+			
 			exit(EXIT_FAILURE);
 		}
 		printf("Ciao cicci ho preso il lock %lld\n", (long long int) getpid());
@@ -174,9 +180,11 @@ int Process_Work(int lsock, int fdlock, struct Config *cfg,  int fdl)//, sqlite3
 			 else {
 			 	if (lockf(fdlock, F_ULOCK,0) == -1) {
 					perror("lockf");
+					
 					exit(EXIT_FAILURE);
 				}
 				perror("max error reached");
+				
 				exit(EXIT_FAILURE);  
 			}                                                            //Too many failures, restart - Troppi fallimenti, ricomincia
 		}
@@ -185,6 +193,7 @@ int Process_Work(int lsock, int fdlock, struct Config *cfg,  int fdl)//, sqlite3
 		error = 0;   												//error must be reset
 		if (lockf(fdlock, F_ULOCK,0) == -1) {
 			perror("lockf");
+			
 			exit(EXIT_FAILURE);
 		}
 		printf("Ciao cicci ho lasciato il lock %lld\n", (long long int) getpid());
@@ -198,6 +207,7 @@ int Process_Work(int lsock, int fdlock, struct Config *cfg,  int fdl)//, sqlite3
 		for (;;) {
 			if (pthread_mutex_lock(&mtx_struct) < 0) {
 				perror("pthread_mutex_lock");
+				
 				exit(EXIT_FAILURE);
 			}
 			if (tss->ctrl_flag == 0) {
@@ -206,12 +216,14 @@ int Process_Work(int lsock, int fdlock, struct Config *cfg,  int fdl)//, sqlite3
 				tss->ctrl_flag = 1;
 				if (pthread_mutex_unlock(&mtx_struct) < 0) {
 					perror("pthread_mutex_unlock");
+					
 					exit(EXIT_FAILURE);
 				}
 				break;
 			}
 			if (pthread_mutex_unlock(&mtx_struct) < 0) {
 				perror("pthread_mutex_unlock");
+				
 				exit(EXIT_FAILURE);
 			}
 		}
@@ -225,6 +237,7 @@ int Process_Work(int lsock, int fdlock, struct Config *cfg,  int fdl)//, sqlite3
 		
 		if (pthread_cond_signal(&cond_variable) < 0) {
 			perror("pthread_cond_signal");
+			
 			exit(EXIT_FAILURE);
 		}
 		
@@ -232,12 +245,14 @@ int Process_Work(int lsock, int fdlock, struct Config *cfg,  int fdl)//, sqlite3
 		{
 			if (pthread_mutex_lock(&mtx_struct) < 0) {
 				perror("pthread_mutex_lock");
+				
 				exit(EXIT_FAILURE);
 			}
 			
 			for(i = 0; i <= cfg->Thread_Increment; i++) {
 				if (pthread_create(&tid,NULL,thread_work,tss) < 0) {
 					perror("pthread_create (pool increment)");
+					
 					exit(EXIT_FAILURE);
 				}
 			}
@@ -245,6 +260,7 @@ int Process_Work(int lsock, int fdlock, struct Config *cfg,  int fdl)//, sqlite3
 			
 			if (pthread_mutex_unlock(&mtx_struct) < 0) {
 				perror("pthread_mutex_unlock");
+				
 				exit(EXIT_FAILURE);
 			}
 			thread_num+=cfg->Thread_Increment;
