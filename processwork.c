@@ -38,14 +38,13 @@ struct thread_struct {
 	int ctrl_flag					//Thanks to this flag there will be a sort of order in the operations
 };
 
-extern sqlite3 *db;
 
 void *thread_work(void *arg) {
 	struct thread_struct *data = (struct thread_struct *) arg;
 	int connsd, fdl;
 	char *orig;
 	char *modif;
-	//sqlite3 *db;
+
 	printf("Sono un thread!\n");
 	fflush(stdout);
 	while (1==1){
@@ -98,8 +97,7 @@ void *thread_work(void *arg) {
 		// 	exit(EXIT_FAILURE);
 		// }
 		
-		
-		Thread_Work(connsd, fdl, db, orig, modif);
+		Thread_Work(connsd, fdl, orig, modif);
 		//Leggere richiesta e far partire funzione adatta (unica funzione nel nostro caso), presente su altro file (per modularità)
 		//Aggiornare Log
 		if (pthread_mutex_lock(&mtx_struct) < 0) {
@@ -121,14 +119,15 @@ int Process_Work(int lsock, int fdlock, struct Config *cfg,  int fdl)//, sqlite3
 	socklen_t client_len;
 	struct sockaddr_in clientaddr;
 	pthread_t tid;                           //[MIN_THREAD_NUM];
-	
+
 	struct thread_struct *tss;               //[MIN_THREAD_NUM];
 	
-	if((tss = malloc(sizeof(struct thread_struct)))==NULL)
+	if((tss = malloc(sizeof(struct thread_struct))) == NULL)
 	{
 		perror ("Error in Malloc");
 		return (EXIT_FAILURE);
 	}
+	
 
 	errno=0;	
 

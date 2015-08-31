@@ -4,6 +4,9 @@
 #include <errno.h>
 #include <string.h>
 #include <sqlite3.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 #include "db.h"
 
 int callbackchk (void *res, int argc, char **argv, char **azColName)
@@ -68,6 +71,66 @@ int dbcontrol(sqlite3 *db, char *image, int flag)              //Controls whethe
 	return res;
 }
 
+struct datares {
+	sqlite3 *db;
+	char orig_path[512];
+};
+
+
+int callbackval (void *res, int argc, char **argv, char **azColName)
+{
+	long j;
+	char *endptr;
+	struct datares *val = (struct datares *) res;
+	(void) azColName;
+	char path[strlen(val->orig_path)+strlen(argv[0])];
+	if (argc!=1)
+	{
+		fprintf(stderr, "Unexpected number of columns");
+		return EXIT_FAILURE;
+	}  
+	sprintf(path,"%s%s",val->orig_path,argv[0]);
+	if (open(path,O_RDWR) == -1) {
+		dbremove(val->db,argv[0],1);
+		printf("Image %s removed\n",argv[0]);
+	}
+
+	return EXIT_SUCCESS;
+}
+
+int dbvalidate(sqlite3 *db, char *orig_path, int flag)              //Controls whether "image" exists in table 'flag' (0=imag, 1=orig, 2=page) and returns 1 if positive, 0 if negative. - Controlla se "image" esiste nella tabella flag (0=imag, 1=orig, 2=page) e restituisce 1 in caso affermativo, 0 in caso negativo
+{
+	char *zErrMsg = 0;
+	char dbcomm[512];
+	int res;
+	char flags[6];
+	errno = 0;
+	struct datares datar;
+	datar.db = db;
+	strcpy(datar.orig_path,orig_path);
+
+
+	if 		(flag==0) snprintf(flags, sizeof(char)*5, "imag");
+	else if (flag==1) snprintf(flags, sizeof(char)*5, "orig");
+	else if (flag==2) snprintf(flags, sizeof(char)*5, "page");
+	else {
+		fprintf(stderr, "Error in dbcontrol: wrong flag value");
+		exit(EXIT_FAILURE);
+	}
+
+	ssize_t cou = snprintf(dbcomm, sizeof(char)*512, "SELECT name FROM %s ", flags);
+	if (cou > sizeof(char)*512 || cou == -1) {
+		perror("snprintf riga 64");
+		return EXIT_FAILURE;
+	}
+
+	if (sqlite3_exec(db, dbcomm, callbackval, (void *)&datar, &zErrMsg)) {
+		perror("error in sqlite_execcontrol");
+		sqlite3_free(zErrMsg);
+		return EXIT_FAILURE;
+	}
+	return res;
+}
 
 int dbadd(sqlite3 *db, struct Record rd, int flag)                //Adds to table 'flag' (0=imag, 1=orig, 2=page) the record rd. - Aggiunge allla tabella flag (0=imag, 1=orig, 2=page) il record rd          
 {
@@ -81,7 +144,7 @@ int dbadd(sqlite3 *db, struct Record rd, int flag)                //Adds to tabl
 	else if (flag==2) cou = snprintf(dbcomm, sizeof(char)*512, "INSERT INTO page values('%s', datetime(), %ld)",  rd.name, rd.acc);
 	else {
 		fprintf(stderr, "Error in dbadd: wrong flag value");
-		exit(EXIT_FAILURE);
+		return (EXIT_FAILURE);
 	}
 	if (cou > sizeof(char)*512 || cou == -1) {
 		perror("snprintf riga 99");

@@ -22,17 +22,17 @@
 #include "fileman.h"
 #include "db.h"
 #include "garbage.h"
+#include "menu.h"
 
 /*
 #define SERV_PORT 5042
 #define MAX_PROLE_NUM 10    //Massimo numero processi concorrenti (oltre al padre). Si suppone che ogni processo si divida in thread.
 */
 
-sqlite3 *db;
+//sqlite3 *db;
 
 void sighandler(int sig) {
-	sqlite3_close(db);
-	printf("server shutdown... database closed\n");
+	printf("server shutdown\n");
 	fflush(stdout);
 	_exit(EXIT_FAILURE);
 }
@@ -73,8 +73,7 @@ int main()
 	{
 		perror("Error in shmat");
 		return (EXIT_FAILURE);
-	}
-	
+	}	
 	
 	if ((fdc = open("config.ini", O_CREAT | O_EXCL| O_RDWR, 0666)) == -1) {  //Create config.ini, unless it already exists - Crea config.ini, a meno che già non esista
 		if ((fdc = open("config.ini", O_RDWR)) == -1) {                      // If config.ini already exists, open it - Se config.ini già esiste, aprilo
@@ -96,6 +95,7 @@ int main()
 		}                                          
 	}
 	
+	while (start_menu(cfg) != 2523);
 	//Create_access_log_file;
 	if ((fdal = open("access.log", O_CREAT | O_EXCL | O_APPEND | O_RDWR, 0666)) == -1) {  // Create access.log, unless it already exists - Crea log.log, a meno che già non esista
 		if ((fdal = open("access.log", O_APPEND | O_RDWR)) == -1) {                      // If access.log already exists, open it - Se log.log già esiste, aprilo
@@ -124,12 +124,14 @@ int main()
 	// }
 	
 
-	if (sqlite3_open("db/images.db", &db)){  //Open the conection to the database - Apre la connessione al database
-		perror("error in sqlite_open");
-		sqlite3_close(db);                    //In any case of server shutdown, close the db connection first - In ogni caso di chiusura del server, chiude anche la connessione al database 
-		return EXIT_FAILURE;
-	}
+	// if (sqlite3_open("db/images.db", &db)){  //Open the conection to the database - Apre la connessione al database
+	// 	perror("error in sqlite_open");
+	// 	sqlite3_close(db);                    //In any case of server shutdown, close the db connection first - In ogni caso di chiusura del server, chiude anche la connessione al database 
+	// 	return EXIT_FAILURE;
+	// }
+
 	
+
 	printf("%s %s\n",cfg->Modified_Path, cfg->Orig_Path);
 	fflush(stdout);
 
@@ -137,7 +139,6 @@ int main()
 			{
 				case -1:
 					perror("Error in fork");
-					sqlite3_close(db);
 					exit(EXIT_FAILURE);
 				case 0:
 					Garbage_Collector(/*db,*/ cfg, fdl);
@@ -146,14 +147,12 @@ int main()
 
 	if ((sock = socket(AF_INET, SOCK_STREAM, 0)) <0) {  
 		perror("Error in socket");
-		sqlite3_close(db);
 		return (EXIT_FAILURE);
 	}
 
 	if (memset((void*)&servaddr, 0, sizeof(servaddr))==NULL)
 	{
 		perror("Error in memset");
-		sqlite3_close(db);
 		return (EXIT_FAILURE);
 	}
 	servaddr.sin_family=AF_INET;
@@ -162,7 +161,6 @@ int main()
 
 	if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(int)) < 0) {        //To allow the reuse of the port in case of restart of the server - Per permettere il riuso della porta in caso di riavvio del server
 		perror("Error in setsockopt");
-		sqlite3_close(db);
 		exit(EXIT_FAILURE);
 	}
 
@@ -172,7 +170,6 @@ int main()
 
 	if (setsockopt (sock, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout,sizeof(timeout)) < 0) {
 		perror("Error in setsockopt");
-		sqlite3_close(db);
 		exit(EXIT_FAILURE);
   	}
 
@@ -181,28 +178,24 @@ int main()
 	socklen_t optlen = sizeof(optval);
 	if(setsockopt(sock, SOL_SOCKET, SO_KEEPALIVE, &optval, optlen) < 0) {
 		perror("setsockopt()");
-		sqlite3_close(db);
 		exit(EXIT_FAILURE);
 	}
 
 	if(bind(sock, (struct sockaddr*)&servaddr, sizeof(servaddr))<0)
 	{
 		perror("Error in bind");
-		sqlite3_close(db);
 		return (EXIT_FAILURE);
 	}
 	
 	if (listen(sock, SOMAXCONN)<0)   //SOMAXCONN = accept connections untli the SO gives up - SOMAXCONN = acccetta connessioni finchè il SO non getta la spugna
 	{
 		perror("Error in listen");
-		sqlite3_close(db);
 		return (EXIT_FAILURE);
 	}
 
 	int fdlock = open("lock",O_RDWR);
 	if (fdlock == -1) {
 		perror("open");
-		sqlite3_close(db);
 		return EXIT_FAILURE;
 	}
 
@@ -213,7 +206,6 @@ int main()
 		{
 			case -1:
 				perror("Error in prefork");
-				sqlite3_close(db);
 				exit(EXIT_FAILURE);
 			case 0:
 				printf("Sono un figlio\n");
@@ -228,7 +220,6 @@ int main()
           signal(SIGTERM, sighandler) == SIG_ERR ||          
           signal(SIGQUIT, sighandler) == SIG_ERR ) {        
           perror("signal");
-          sqlite3_close(db);              
           return EXIT_FAILURE;                                 
       } 
 
@@ -238,7 +229,6 @@ int main()
 			{
 				case -1:
 					perror("Error in fork");
-					sqlite3_close(db);
 					exit(EXIT_FAILURE);
 				case 0:
 					Process_Work(sock,fdlock, cfg, fdal);//, db);
@@ -247,6 +237,5 @@ int main()
 			}
 		}
 	}	
-	sqlite3_close(db);
 	return EXIT_SUCCESS;
 }

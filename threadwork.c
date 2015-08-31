@@ -42,7 +42,7 @@ int shutdown_sequence(int connsd) {
 	return EXIT_SUCCESS;
 }
 
-int Thread_Work(int connsd, int fdl, sqlite3 *db, char *orig, char *modif)
+int Thread_Work(int connsd, int fdl, char *orig, char *modif)
 {
 	/*READING SEQUENCE BEGIN*/
 	for (;;) {
@@ -57,7 +57,7 @@ int Thread_Work(int connsd, int fdl, sqlite3 *db, char *orig, char *modif)
     	int ip = getpeername(connsd, (struct sockaddr *)&addr, &addr_size);
     	char clientip[20];
     	strcpy(clientip,inet_ntoa(addr.sin_addr));
-
+		sqlite3 *db;
 
 		char buff[BUFF_SIZE];
 		
@@ -93,6 +93,7 @@ int Thread_Work(int connsd, int fdl, sqlite3 *db, char *orig, char *modif)
 		//If really nothing has been read I shutdown the connect
 		if (strlen(buff) == 0) {
 			shutdown_sequence(connsd);
+			sqlite3_close(db);
 			return EXIT_FAILURE;
 		}
 		/*READING SEQUENCE END*/
@@ -116,6 +117,7 @@ int Thread_Work(int connsd, int fdl, sqlite3 *db, char *orig, char *modif)
 		//The buff could be shortest than usual so the request_line couldn't even exists
 		if (request_line == NULL) {
 			perror("Not valid request");
+			sqlite3_close(db);
 			shutdown_sequence(connsd);
 			return EXIT_FAILURE;
 		}
@@ -152,6 +154,7 @@ int Thread_Work(int connsd, int fdl, sqlite3 *db, char *orig, char *modif)
 			writen = send(connsd,"HTTP/1.1 405 Method Not Allowed\r\n\r\n",strlen("HTTP/1.1 405 Method Not Allowed\r\n\r\n"),MSG_DONTWAIT);
 			if (writen == 0) {
 				perror("write");
+				sqlite3_close(db);
 				shutdown_sequence(connsd);
 				return EXIT_FAILURE;
 			}
@@ -183,7 +186,11 @@ int Thread_Work(int connsd, int fdl, sqlite3 *db, char *orig, char *modif)
 
 		// in case of a specific resource request
 		} else { 
-
+			if (sqlite3_open("db/images.db", &db)){  //Open the conection to the database - Apre la connessione al database
+				perror("error in sqlite_open");
+				sqlite3_close(db);                    //In any case of server shutdown, close the db connection first - In ogni caso di chiusura del server, chiude anche la connessione al database 
+				return EXIT_FAILURE;
+			}
 			//TODO il path immagine totale includerà il "punto (.)" iniziale, la cartella prelevata dal config e il nome dell'immagine specificato nella richiesta HTTP
 			char path[256];	  //It will contains the path of the original image 
 		
@@ -201,6 +208,7 @@ int Thread_Work(int connsd, int fdl, sqlite3 *db, char *orig, char *modif)
 				flag = 1;							
 				if (image == -1) {  				// If the opening of the 404.html page fails everything will be close
 					perror("open");
+					sqlite3_close(db);
 					shutdown_sequence(connsd);
 					return EXIT_FAILURE;
 				}
@@ -284,6 +292,7 @@ int Thread_Work(int connsd, int fdl, sqlite3 *db, char *orig, char *modif)
 		tmp = localtime_r(&t,&result);
 		if (tmp == NULL) {
    			perror("localtime");
+   			sqlite3_close(db);
    			shutdown_sequence(connsd);
 			return EXIT_FAILURE;
 		}
@@ -291,6 +300,7 @@ int Thread_Work(int connsd, int fdl, sqlite3 *db, char *orig, char *modif)
 		char timestring[30];
 		if (strftime(timestring,sizeof(timestring),"%d/%b/%Y:%H:%M:%S %z",tmp) == 0) {
 			perror("strftime");
+			sqlite3_close(db);
 			shutdown_sequence(connsd);
 			return EXIT_FAILURE;
 		}
@@ -302,12 +312,14 @@ int Thread_Work(int connsd, int fdl, sqlite3 *db, char *orig, char *modif)
 		// fcntl(fileno(image),F_SETLKW,&lock);
 		if (flock(image,LOCK_EX) == -1) {
 		 	perror("lock image lock");
+		 	sqlite3_close(db);
 		 	shutdown_sequence(connsd);
 		 	return EXIT_FAILURE;
 		}
 
 		if(fstat(image,&fileStat) < 0) {
          	perror("fstat image");
+         	sqlite3_close(db);
          	shutdown_sequence(connsd);
          	return EXIT_FAILURE;
         }
@@ -316,6 +328,7 @@ int Thread_Work(int connsd, int fdl, sqlite3 *db, char *orig, char *modif)
 
 		if (flock(image,LOCK_UN) == -1) {
 		 	perror("lock image unlock");
+		 	sqlite3_close(db);
 		 	shutdown_sequence(connsd);
 		 	return EXIT_FAILURE;
 		}
@@ -355,6 +368,7 @@ int Thread_Work(int connsd, int fdl, sqlite3 *db, char *orig, char *modif)
 		ssize_t numsend;
 		if ((numsend = sendfile(connsd,image,0,fileLen)) == -1) {
 			perror("sendfile");
+			sqlite3_close(db);
 			shutdown_sequence(connsd);
 			return EXIT_FAILURE;
 		}
@@ -369,6 +383,7 @@ int Thread_Work(int connsd, int fdl, sqlite3 *db, char *orig, char *modif)
 
 		if (lockf(fdl, F_LOCK,0) == -1) {
 			perror("lockf fdl");
+			sqlite3_close(db);
 			shutdown_sequence(connsd);
 			return EXIT_FAILURE;
 		}
@@ -378,6 +393,7 @@ int Thread_Work(int connsd, int fdl, sqlite3 *db, char *orig, char *modif)
 
 		if (lockf(fdl, F_ULOCK,0) == -1) {
 			perror("lockf fdl");
+			sqlite3_close(db);
 			shutdown_sequence(connsd);
 			return EXIT_FAILURE;
 		}		
