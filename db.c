@@ -61,7 +61,7 @@ int dbcontrol(sqlite3 *db, char *image, int flag)              //Controls whethe
 		perror("snprintf (dbcontrol)");
 		return EXIT_FAILURE;
 	}
-
+	sqlite3_busy_timeout(db, 200);
 	if (sqlite3_exec(db, dbcomm, callbackchk, (void *)&res, &zErrMsg)) {
 		perror("error in sqlite_execcontrol(dbcontrol)");
 		sqlite3_free(zErrMsg);
@@ -121,7 +121,7 @@ int dbvalidate(sqlite3 *db, char *orig_path, int flag)              //Removes fr
 		perror("snprintf (dbvalidate)");
 		return EXIT_FAILURE;
 	}
-
+	sqlite3_busy_timeout(db, 200);
 	if (sqlite3_exec(db, dbcomm, callbackval, (void *)&datar, &zErrMsg)) {
 		perror("error in sqlite_execcontrol(dbvalidate)");
 		sqlite3_free(zErrMsg);
@@ -152,6 +152,7 @@ int dbadd(sqlite3 *db, struct Record rd, int flag)                //Adds to tabl
 	fflush(stdout);
 	 */
 	errno = 0;
+	sqlite3_busy_timeout(db, 200);
 	if (sqlite3_exec(db, dbcomm, NULL, 0, &zErrMsg)){
 		perror("error in sqlite_execcontrol (dbadd)");
 		sqlite3_free(zErrMsg);
@@ -178,8 +179,10 @@ int dbremove(sqlite3 *db, char *image, int flag)                 //Removes from 
 		perror("snprintf (dbremove)");
 		return EXIT_FAILURE;
 	}
+	sqlite3_busy_timeout(db, 200);
+
 	if (sqlite3_exec(db, dbcomm, NULL, 0, &zErrMsg)){
-		perror("error in sqlite_exec (dbremove));
+		perror("error in sqlite_exec (dbremove)");
 		sqlite3_free(zErrMsg);
 		return EXIT_FAILURE;
 	}
@@ -210,8 +213,7 @@ int dbremoveoldest(sqlite3 *db, int fdl)                              //Removes 
 	char nameimm[512];
 	char filepath[512];
 	
-
-	
+	sqlite3_busy_timeout(db, 200);
 	if (sqlite3_exec(db, "SELECT name FROM imag WHERE date = (SELECT min(date) FROM imag)", callbackremol, nameimm, &zErrMsg)){
 		perror("error in sqlite_exec (dbremoveoldest)");
 		sqlite3_free(zErrMsg);
@@ -271,6 +273,7 @@ int dbcheck(sqlite3 *db, char *image, char *origimag )           //Calls dbcontr
 	errno = 0;
 	
 	check = dbcontrol(db, image, 0);
+	sqlite3_busy_timeout(db, 200);
 	if (check == 1)
 	{
 		cou = snprintf(dbcomm, sizeof(char)*512, "SELECT acc FROM imag WHERE name = '%s'",  image);
@@ -301,7 +304,6 @@ int dbcheck(sqlite3 *db, char *image, char *origimag )           //Calls dbcontr
 		strcpy(rd.name,image);
 		dbadd(db, rd, 0);
 	}
-	
 	
 	cou = snprintf(dbcomm, sizeof(char)*512, "SELECT acc FROM orig WHERE name = '%s'",  origimag);
 	if (sqlite3_exec(db, dbcomm, callbackacc, (void *)&acc, &zErrMsg)){
@@ -358,7 +360,7 @@ int dbcount(sqlite3 *db, int flag)              //Returns the number of existing
 	int res;
 	char flags[6];
 	errno = 0;
-	
+	sqlite3_busy_timeout(db, 200);
 	ssize_t cou;
 	if (flag==0) cou = snprintf(flags, sizeof(char)*5, "imag");
 	else if (flag==1) cou = snprintf(flags, sizeof(char)*5, "orig");
@@ -409,7 +411,7 @@ char *dbselect(sqlite3 *db, char *image, int flag)      //Returns the record of 
 	char dbcomm[512];
 	char *res;
 	char flags[6];
-	
+	sqlite3_busy_timeout(db, 200);
 	if((res= malloc(sizeof(char)*512))==NULL)
 	{
 		perror ("Error in Malloc (dbselect)");
@@ -472,7 +474,7 @@ int dbcount2(sqlite3 *db, char *UA)              //Returns the number of existin
 	int res;
 	
 	
-		
+	sqlite3_busy_timeout(db, 200);
 	ssize_t cou = snprintf(dbcomm, sizeof(char)*512, "SELECT count(*) FROM user_agent WHERE UA = '%s' ", UA);
 	if (cou > sizeof(char)*512 || cou == -1) {
 		perror("snprintf (dbcount2)");
@@ -513,7 +515,7 @@ char *dbfindUA (sqlite3 *db, char *UA)      //Return the maximum resolution supp
 	char dbcomm[512];
 	char *res;
 	errno = 0;
-
+	
 	if (dbcount2(db, UA) == 0)           //If the User Agent isn't found in the db, return NULL - Se l'User Agent non è trovato nel db, ritorna NULL
 	{
 		return "NULL";
@@ -530,7 +532,7 @@ char *dbfindUA (sqlite3 *db, char *UA)      //Return the maximum resolution supp
 		perror("snprintf (dbfindUA)");
 		return "NULL";
 	}
-	
+	sqlite3_busy_timeout(db, 200);
 	if (sqlite3_exec(db, dbcomm, callbackfUA, (void*)res, &zErrMsg)){
 		perror("error in sqlite_exec (dbfindUA)");
 		sqlite3_free(zErrMsg);
@@ -555,7 +557,7 @@ int dbaddUA (sqlite3 *db, char *UA, char *res)         //Add a User Agent and it
 	printf("%s\n",dbcomm);
 	fflush(stdout);
 	 */
-
+	sqlite3_busy_timeout(db, 200);
 	errno = 0;
 	if (sqlite3_exec(db, dbcomm, NULL, 0, &zErrMsg)){
 		perror("error in sqlite_execcontrol (dbaddUA)");
