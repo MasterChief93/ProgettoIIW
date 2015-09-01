@@ -23,6 +23,7 @@
 #include "db.h"
 #include "garbage.h"
 #include "menu.h"
+#include "page_generator.h"
 
 /*
 #define SERV_PORT 5042
@@ -96,6 +97,7 @@ int main()
 	}
 	
 	while (start_menu(cfg) != 2523);
+	page_generator();
 	//Create_access_log_file;
 	if ((fdal = open("access.log", O_CREAT | O_EXCL | O_APPEND | O_RDWR, 0666)) == -1) {  // Create access.log, unless it already exists - Crea log.log, a meno che già non esista
 		if ((fdal = open("access.log", O_APPEND | O_RDWR)) == -1) {                      // If access.log already exists, open it - Se log.log già esiste, aprilo
@@ -131,10 +133,6 @@ int main()
 	// }
 
 	
-
-	printf("%s %s\n",cfg->Modified_Path, cfg->Orig_Path);
-	fflush(stdout);
-
 	switch (fork())                                                    //Creates a Process to keep under control the size of the cache - Crea un processo per mantenere sotto controllo la grandezza della cache
 			{
 				case -1:
