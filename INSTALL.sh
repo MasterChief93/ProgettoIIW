@@ -4,6 +4,8 @@
 echo "Hello World!"
 
 sudo apt-get install libapr1-dev
+sudo apt-get install libmagickwand-dev
+sudo apt-get install libxml2
 
 cd apr-1.5.2
 ./configure
