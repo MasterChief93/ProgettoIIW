@@ -90,7 +90,7 @@ void page_generator() {
 	int count = 1;
 	char *filename;
 	while ((filename = strtok(buf,"\n")) != NULL) {
-		dprintf(fd,"<a href=\"%s\">%d</a>",filename,count);
+		dprintf(fd,"<a href=\"%s\">Immagine %d</a><br>\n",filename,count);
 		count += 1;
 		buf = NULL;
 	}

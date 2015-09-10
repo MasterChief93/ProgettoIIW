@@ -59,6 +59,7 @@ int Thread_Work(int connsd, int fdl, char *orig, char *modif)
 
 		char logstring[1024];
 
+		// Client IP Gathering
 		struct sockaddr_in addr;
     	socklen_t addr_size = sizeof(struct sockaddr_in);
     	int ip = getpeername(connsd, (struct sockaddr *)&addr, &addr_size);
@@ -156,7 +157,7 @@ int Thread_Work(int connsd, int fdl, char *orig, char *modif)
 		if (strcmp(method_name,"GET") == 0) method_flag = 0;
 		else if(strcmp(method_name,"HEAD") == 0) method_flag = 1;
 		else {
-			writen = send(connsd,"HTTP/1.1 405 Method Not Allowed\r\n\r\n",strlen("HTTP/1.1 405 Method Not Allowed\r\n\r\n"),MSG_DONTWAIT);
+			writen = send(connsd,"HTTP/1.1 405 Method Not Allowed\r\n\r\n",strlen("HTTP/1.1 405 Method Not Allowed\r\n\r\n"),0);
 			if (writen == 0) {
 				perror("write");
 				sqlite3_close(db);
@@ -359,7 +360,7 @@ int Thread_Work(int connsd, int fdl, char *orig, char *modif)
 		ssize_t len_resp = resp_length;
 		int move = 0;
 		while (len_resp > 0) {
-			write_resp = send(connsd,&response[move],len_resp,MSG_DONTWAIT);
+			write_resp = send(connsd,&response[move],len_resp,0);
 			if (write_resp == -1) continue;
 			move += write_resp;
 			len_resp -= write_resp;

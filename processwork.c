@@ -35,7 +35,7 @@ struct thread_struct {
 	//sqlite3 *db;                   //Database Address - Indirizzo del database
 	char *orig;
 	char *modif;
-	int ctrl_flag					//Thanks to this flag there will be a sort of order in the operations
+	int ctrl_flag;					//Thanks to this flag there will be a sort of order in the operations
 };
 
 //sqlite3 *db;
