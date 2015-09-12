@@ -20,7 +20,7 @@ make
 sudo make install
 
 sudo ldconfig
-chmod 777 -R libwurfl-master
+chmod 777 -R ../libwurfl-master
 cd ../libwurfl-master
 ./configure --with-apache='/usr/local/apache2'
 make
