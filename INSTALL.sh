@@ -8,6 +8,7 @@ sudo apt-get install libmagickwand-dev
 sudo apt-get install sqlite3 libsqlite3-dev
 sudo apt-get install libxml2
 sudo apt-get install automake
+sudo apt-get install autotools-dev
 
 cd apr-1.5.2
 ./configure
