@@ -17,13 +17,6 @@
 #include "fileman.h"
 #include "db.h"
 
-/*
-#define MIN_THREAD_NUM 10          //Numero di Thread nel pool iniziale di ogni processo
-#define MAX_THREAD_NUM 50          //Massimo numero di Thread per processo
-#define MAX_ERROR_ALLOWED 5        //Massimo numero di errori ignorabili
-#define THREAD_INCREMENT 5         //Quanti Thread aggiungere ogni volta che il pool risulta insufficiente
-*/
-
 pthread_mutex_t mtx_struct = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t mtx_cond = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t cond_variable = PTHREAD_COND_INITIALIZER;
@@ -32,13 +25,11 @@ struct thread_struct {
 	int conn_sd; 				   //Connection socket - Socket di connessione
 	int count;                     //Available thread counter - Contatore dei thread disponibili
 	int fdl;                       //Logging file - File di logging
-	//sqlite3 *db;                   //Database Address - Indirizzo del database
 	char *orig;
 	char *modif;
 	int ctrl_flag;					//Thanks to this flag there will be a sort of order in the operations
 };
 
-//sqlite3 *db;
 
 
 void *thread_work(void *arg) {
@@ -46,7 +37,6 @@ void *thread_work(void *arg) {
 	int connsd, fdl;
 	char *orig;
 	char *modif;
-	//sqlite3 *db;
 
 	printf("Sono un thread!\n");
 	fflush(stdout);
@@ -60,10 +50,6 @@ void *thread_work(void *arg) {
 			exit(EXIT_FAILURE);
 		}
 		
-		// if (pthread_mutex_lock(&mtx_struct) < 0) {
-		// 	perror("pthred_mutex_lock");
-		// 	exit(EXIT_FAILURE);
-		// }
 		if (pthread_mutex_unlock(&mtx_cond) < 0) {
 			perror("pthred_mutex_lock");
 			exit(EXIT_FAILURE);
@@ -78,7 +64,6 @@ void *thread_work(void *arg) {
 				connsd = data->conn_sd;
 				data->count -= 1;
 				fdl= data->fdl;
-				//db = data->db;
 				orig = data->orig;
 				modif = data->modif;
 				data->ctrl_flag = 0;
@@ -93,12 +78,6 @@ void *thread_work(void *arg) {
 				exit(EXIT_FAILURE);
 			}
 		}
-		
-
-		// if (pthread_mutex_unlock(&mtx_struct) < 0) {
-		// 	perror("pthread_mutex_unlock");
-		// 	exit(EXIT_FAILURE);
-		// }
 		
 		Thread_Work(connsd, fdl, orig, modif);
 		//Leggere richiesta e far partire funzione adatta (unica funzione nel nostro caso), presente su altro file (per modularità)
@@ -137,7 +116,6 @@ int Process_Work(int lsock, int fdlock, struct Config *cfg,  int fdl)//, sqlite3
 	tss->conn_sd = -1;
 	tss->count = cfg->Min_Thread_Num; 								//prima o dopo?
 	tss->fdl = fdl;
-	//tss->db = db;
 	tss->orig = cfg->Orig_Path;
 	tss->modif = cfg->Modified_Path;
 	tss->ctrl_flag = 0;
@@ -163,15 +141,12 @@ int Process_Work(int lsock, int fdlock, struct Config *cfg,  int fdl)//, sqlite3
 	int value;
 	while (1==1)
 	{
-		printf("Ciao cicci sono in attesa %lld\n", (long long int) getpid());
-		fflush(stdout);                                             //Andrà implementato un semaforo tra i processi per evitare l'effetto "Thundering Herd"
+		//Andrà implementato un semaforo tra i processi per evitare l'effetto "Thundering Herd"
 		if (lockf(fdlock, F_LOCK,0) == -1) {
 			perror("lockf");
 			
 			exit(EXIT_FAILURE);
 		}
-		printf("Ciao cicci ho preso il lock %lld\n", (long long int) getpid());
-		fflush(stdout);
 		if ((connsd = accept(lsock, (struct sockaddr*)&clientaddr,&client_len)) < 0)
 		{
 			perror("Error in accept");
@@ -188,22 +163,13 @@ int Process_Work(int lsock, int fdlock, struct Config *cfg,  int fdl)//, sqlite3
 				exit(EXIT_FAILURE);  
 			}                                                            //Too many failures, restart - Troppi fallimenti, ricomincia
 		}
-		printf ("Ho preso il socket %d io processo %lld\n",connsd,getpid());
-		fflush(stdout);
 		error = 0;   												//error must be reset
 		if (lockf(fdlock, F_ULOCK,0) == -1) {
 			perror("lockf");
 			
 			exit(EXIT_FAILURE);
 		}
-		printf("Ciao cicci ho lasciato il lock %lld\n", (long long int) getpid());
-		fflush(stdout);
 		
-		// if (pthread_mutex_lock(&mtx_struct) < 0) {
-		// 	perror("pthread_mutex_lock");
-		// 	exit(EXIT_FAILURE);
-		// }
-
 		for (;;) {
 			if (pthread_mutex_lock(&mtx_struct) < 0) {
 				perror("pthread_mutex_lock");
@@ -228,12 +194,6 @@ int Process_Work(int lsock, int fdlock, struct Config *cfg,  int fdl)//, sqlite3
 			}
 		}
 		//countt contains the number of free threads (the -1 prevents the decreasing of the counter that will happen in the thread)
-		
-
-		// if (pthread_mutex_unlock(&mtx_struct) < 0) {
-		// 	perror("pthread_mutex_unlock");
-		// 	exit(EXIT_FAILURE);
-		// }
 		
 		if (pthread_cond_signal(&cond_variable) < 0) {
 			perror("pthread_cond_signal");
