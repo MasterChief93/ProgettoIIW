@@ -117,6 +117,12 @@ int Thread_Work(int connsd, int fdl, char *orig, char *modif)
 
 		char *method_name;			//GET, HEAD, etc.
 		char *resource;				//The resource requested ("/","/favicon.ico",etc.)
+		
+		printf("%s",buff);
+		fflush(stdout);
+
+		char buff_copy[strlen(buff)];
+		strcpy(buff_copy,buff);
 
 		request_line = strtok_r(buff,"\r\n",&saveptr);
 		strcpy(rline_copy,request_line);
@@ -141,7 +147,45 @@ int Thread_Work(int connsd, int fdl, char *orig, char *modif)
 		resource = strtok_r(NULL," ",&saveptr2);  							//resource will have the resource file name - resource contiene il nome della risorsa
 		user_agent = strtok_r(NULL,"",&saveptr3);   						//it works...
 		
+		char *accept_line;
+		char *accept_intro;
+		char *accept;
 		
+		strtok_r(buff_copy,"\r\n",&saveptr);
+		for (i = 0; i < 10; i++) {
+			if ((accept_line = strtok_r(NULL,"\r\n",&saveptr)) != NULL) {
+				if ((accept_intro = strtok_r(accept_line," ",&saveptr3)) != NULL) {
+					if (strcmp(accept_intro,"Accept:") == 0) break;
+				}
+			}
+		}
+
+		char *saveptr4;
+		char *results;
+		char *saveptr5;
+		char *saveptr6;
+		char *value;
+		char *temp;
+		float quality = 0;
+
+		if ((accept = strtok_r(NULL,"",&saveptr3)) != NULL) {
+			while ((results = strtok_r(accept,",",&saveptr4)) != NULL) {
+				printf("result = %s\n",results);
+				fflush(stdout);
+				if ((temp = strtok_r(results,";",&saveptr5)) != NULL) {
+					if (strcmp(temp,"*/*") == 0 || strcmp(temp,"image/jpeg") == 0 || strcmp(temp,"image/*") == 0) {
+						value = strtok_r(NULL,";",&saveptr5); 
+						break;
+					}
+				}
+				accept = NULL;
+			}
+			if (strtok_r(value,"=",&saveptr6) != NULL) {
+				quality = strtof(strtok_r(NULL,"=",&saveptr6),NULL);
+			}
+		}
+
+
 		/*INFORMATION GATHERING END*/
 		
 
@@ -216,25 +260,27 @@ int Thread_Work(int connsd, int fdl, char *orig, char *modif)
 			// if the image is one the database instead
 			} else {                            	
 				char resolution[128]; //It will contains the resolution of the client in the form of "decimal SPACE decimal"
-
-				//The result of dbfindUA will be copied in resolution if the user-agent is already on the db
-				strcpy(resolution,dbfindUA(db,user_agent));   
-
-				printf("resolution = %s\n",resolution);
-				fflush(stdout);
-				//If resolution has not be filled by dbfindUA so there is not an entry in the db
-				if (strcmp(resolution,"NULL") == 0) {
-					//libwurfl is called and the useragent with the resolution will be added on the db
-					wurfl_interrogation(user_agent, resolution);
-					dbaddUA(db,user_agent,resolution);
-				}
-				
-				// CONTROLLO SE GIA ESISTE A QUELLA RISOLUZIONE con dbcheck (Se non c'è la inserisce da solo) 0 se non c'è (modifico con image magick) o 1 se c'è (e vado diretto al percorso delle pagine)
-				//From resolution width and height will be parsed and stored in two different integer variables
 				int width;
 				int height;
-				sscanf(resolution,"%d %d ",&width,&height);
-	
+				//The result of dbfindUA will be copied in resolution if the user-agent is already on the db
+				if (quality == 0) {
+					strcpy(resolution,dbfindUA(db,user_agent));   
+
+					printf("resolution = %s\n",resolution);
+					fflush(stdout);
+					//If resolution has not be filled by dbfindUA so there is not an entry in the db
+					if (strcmp(resolution,"NULL") == 0) {
+						//libwurfl is called and the useragent with the resolution will be added on the db
+						wurfl_interrogation(user_agent, resolution);
+						dbaddUA(db,user_agent,resolution);
+					}
+				
+					// CONTROLLO SE GIA ESISTE A QUELLA RISOLUZIONE con dbcheck (Se non c'è la inserisce da solo) 0 se non c'è (modifico con image magick) o 1 se c'è (e vado diretto al percorso delle pagine)
+					//From resolution width and height will be parsed and stored in two different integer variables
+					
+					sscanf(resolution,"%d %d ",&width,&height);
+				}
+
 
 				char *n_image;
 				char *ext;
@@ -247,10 +293,13 @@ int Thread_Work(int connsd, int fdl, char *orig, char *modif)
 				char new_path[strlen(modif)+strlen(n_image)+14];
 				
 				char new_image_name[strlen(n_image)+14];
-
-				sprintf(new_image_name,"%s_%d_%d.%s",n_image,width,height,ext);    //new_image_name will contain the complete name of the resized image
-				sprintf(new_path,"%s%s",modif,new_image_name);					   //new_path will be the relative path of the modified image
-
+				if (quality == 0) {
+					sprintf(new_image_name,"%s_%d_%d.%s",n_image,width,height,ext);    //new_image_name will contain the complete name of the resized image
+					sprintf(new_path,"%s%s",modif,new_image_name);					   //new_path will be the relative path of the modified image
+				} else {
+					sprintf(new_image_name,"%s_%.2f.%s",n_image,quality,ext);    //new_image_name will contain the complete name of the resized image
+					sprintf(new_path,"%s%s",modif,new_image_name);
+				}
 				
 				
 				while (image == -1) {
@@ -258,7 +307,7 @@ int Thread_Work(int connsd, int fdl, char *orig, char *modif)
 					int ischeck = dbcheck(db,new_image_name,resource);
 					//if the image is not on the db
 					if (ischeck == 0) {
-						resizing(path,new_path,width,height);	//I resize it with the new width and height
+						resizing(path,new_path,width,height,quality);	//I resize it with the new width and height
 					}
 
 					image = open(new_path,O_RDWR);

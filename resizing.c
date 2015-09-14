@@ -9,7 +9,7 @@
 #include <wand/magick_wand.h>
 #include "fileman.h"
 
-int resizing(const char *image_name,const char *new_image_path,int width,int height)
+int resizing(const char *image_name,const char *new_image_path,int width,int height,float quality)
 {
 	MagickWand *m_wand = NULL;
 	
@@ -23,9 +23,13 @@ int resizing(const char *image_name,const char *new_image_path,int width,int hei
 	MagickReadImage(m_wand,image_name);
 
 	// Get the image's width and height
-	//--->old_width = MagickGetImageWidth(m_wand);
-	//--->old_height = MagickGetImageHeight(m_wand);
-	// printf("%d %d", width /= 2,height);	
+	if (quality != -1) {
+		old_width = MagickGetImageWidth(m_wand);
+		old_height = MagickGetImageHeight(m_wand);
+		width = old_width * quality;
+		height = old_height *quality;
+	}
+		// printf("%d %d", width /= 2,height);	
 
 	// Cut them in half but make sure they don't underflow
 	//if(width > 250) width = 250;
@@ -35,6 +39,7 @@ int resizing(const char *image_name,const char *new_image_path,int width,int hei
 	// The blur factor is a "double", where > 1 is blurry, < 1 is sharp
 	// I haven't figured out how you would change the blur parameter of MagickResizeImage
 	// on the command line so I have set it to its default of one.
+	
 	MagickResizeImage(m_wand,width,height,LanczosFilter,1);
 	
 	// Set the compression quality to 95 (high quality = low compression)
