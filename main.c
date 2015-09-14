@@ -113,26 +113,7 @@ int main()
 			return (EXIT_FAILURE);
 		}
 	}
-	// if ((dbmem = shmget(IPC_PRIVATE, sizeof(db), O_CREAT | 0666))==-1)
-	// {
-	// 	perror("Error in shmget");
-	// 	return (EXIT_FAILURE);
-	// }
-	
-	// if ((db = shmat(dbmem, NULL, 0))==NULL)
-	// {
-	// 	perror("Error in shmat");
-	// 	return (EXIT_FAILURE);
-	// }
-	
 
-	// if (sqlite3_open("db/images.db", &db)){  //Open the conection to the database - Apre la connessione al database
-	// 	perror("error in sqlite_open");
-	// 	sqlite3_close(db);                    //In any case of server shutdown, close the db connection first - In ogni caso di chiusura del server, chiude anche la connessione al database 
-	// 	return EXIT_FAILURE;
-	// }
-
-	
 	switch (fork())                                                    //Creates a Process to keep under control the size of the cache - Crea un processo per mantenere sotto controllo la grandezza della cache
 			{
 				case -1:
