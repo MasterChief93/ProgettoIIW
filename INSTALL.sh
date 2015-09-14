@@ -28,3 +28,6 @@ make
 sudo make install
 
 sudo ldconfig
+cd ..
+mkdir orig
+mkdir modif
