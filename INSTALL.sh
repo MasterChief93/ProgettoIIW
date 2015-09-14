@@ -23,6 +23,7 @@ sudo make install
 sudo ldconfig
 chmod 777 -R ../libwurfl-master
 cd ../libwurfl-master
+touch configure.ac aclocal.m4 configure Makefile.am Makefile.in
 ./configure --with-apache='/usr/local/apache2'
 make
 sudo make install
