@@ -16,7 +16,7 @@
 #include "garbage.h"
 
 
-int Garbage_Collector(/*sqlite3 *db,*/ struct Config *cfg, int fdl) {     //Every "Garbage_Collection_Frequence" seconds, removes the least recently seen images, untill "Max_Cache_Size" is reached - Ogni "Garbage_Collection_Frequence" secondi rimuove le immagini non accedute da più tempo, fino a raggiungere "Max_Cache_Size"
+int Garbage_Collector(struct Config *cfg, int fdl) {     //Every "Garbage_Collection_Frequence" seconds, removes the least recently seen images, untill "Max_Cache_Size" is reached - Ogni "Garbage_Collection_Frequence" secondi rimuove le immagini non accedute da piÃ¹ tempo, fino a raggiungere "Max_Cache_Size"
 	sqlite3 *db;
 	if (sqlite3_open("db/images.db", &db)){  //Open the conection to the database - Apre la connessione al database
 		perror("error in sqlite_open");
@@ -25,17 +25,13 @@ int Garbage_Collector(/*sqlite3 *db,*/ struct Config *cfg, int fdl) {     //Ever
 	}
 	while (1==1){
 		sleep(cfg->Garbage_Collection_Frequence);
-		//sqlite3_mutex_enter(sqlite3_db_mutex(db));
 		while (dbcount(db, 0) > cfg->Max_Cache_Size){
 			dprintf(fdl,"%d image found: clean operation required\n");
-			//sqlite3_mutex_enter(sqlite3_db_mutex(db));
 			if (dbremoveoldest(db,fdl) == EXIT_FAILURE){
 				perror("Error in dbremoveoldest");
 				break;
 			}
-			//sqlite3_mutex_leave(sqlite3_db_mutex(db));
 		}
-		//sqlite3_mutex_leave(sqlite3_db_mutex(db));
 	}
 	sqlite3_close(db);
 	return EXIT_FAILURE;
