@@ -200,9 +200,7 @@ int Thread_Work(int connsd, int fdl, char *orig, char *modif)
 			
 			//We need to control if the original image is on the database 
 			//There must be no discrepancy between the db and the file on the disk!
-			//sqlite3_mutex_enter(sqlite3_db_mutex(db));
 			int ispresent = dbcontrol(db,resource,1);
-			//sqlite3_mutex_leave(sqlite3_db_mutex(db));
 
 			if (ispresent == 0) { 					// if the image is not in the database 
 				image = open("404.html",O_RDWR);		// 404 error page will be returned
@@ -220,9 +218,7 @@ int Thread_Work(int connsd, int fdl, char *orig, char *modif)
 				char resolution[128]; //It will contains the resolution of the client in the form of "decimal SPACE decimal"
 
 				//The result of dbfindUA will be copied in resolution if the user-agent is already on the db
-				//sqlite3_mutex_enter(sqlite3_db_mutex(db));
 				strcpy(resolution,dbfindUA(db,user_agent));   
-				//sqlite3_mutex_leave(sqlite3_db_mutex(db));
 
 				printf("resolution = %s\n",resolution);
 				fflush(stdout);
@@ -230,9 +226,7 @@ int Thread_Work(int connsd, int fdl, char *orig, char *modif)
 				if (strcmp(resolution,"NULL") == 0) {
 					//libwurfl is called and the useragent with the resolution will be added on the db
 					wurfl_interrogation(user_agent, resolution);
-					//sqlite3_mutex_enter(sqlite3_db_mutex(db));
 					dbaddUA(db,user_agent,resolution);
-					//sqlite3_mutex_leave(sqlite3_db_mutex(db));
 				}
 				
 				// CONTROLLO SE GIA ESISTE A QUELLA RISOLUZIONE con dbcheck (Se non c'è la inserisce da solo) 0 se non c'è (modifico con image magick) o 1 se c'è (e vado diretto al percorso delle pagine)
@@ -261,9 +255,7 @@ int Thread_Work(int connsd, int fdl, char *orig, char *modif)
 				
 				while (image == -1) {
 					//dbcheck will control if an entry of the resized image already exists
-					//sqlite3_mutex_enter(sqlite3_db_mutex(db));
 					int ischeck = dbcheck(db,new_image_name,resource);
-					//sqlite3_mutex_leave(sqlite3_db_mutex(db));
 					//if the image is not on the db
 					if (ischeck == 0) {
 						resizing(path,new_path,width,height);	//I resize it with the new width and height
@@ -274,9 +266,7 @@ int Thread_Work(int connsd, int fdl, char *orig, char *modif)
 
 					// but if it is not on the disk
 					if (image == -1) {	
-						//sqlite3_mutex_enter(sqlite3_db_mutex(db));
 						dbremove(db,new_image_name,0);	// I remove the image entry from the db to prevent other discrepancy
-						//sqlite3_mutex_leave(sqlite3_db_mutex(db));
 						continue;
 					}
 				}
@@ -311,7 +301,6 @@ int Thread_Work(int connsd, int fdl, char *orig, char *modif)
 		struct stat fileStat;
 
 
-		// fcntl(fileno(image),F_SETLKW,&lock);
 		if (flock(image,LOCK_EX) == -1) {
 		 	perror("lock image lock");
 		 	sqlite3_close(db);
