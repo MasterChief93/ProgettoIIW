@@ -25,12 +25,6 @@
 #include "menu.h"
 #include "page_generator.h"
 
-/*
-#define SERV_PORT 5042
-#define MAX_PROLE_NUM 10    //Massimo numero processi concorrenti (oltre al padre). Si suppone che ogni processo si divida in thread.
-*/
-
-//sqlite3 *db;
 
 void sighandler(int sig) {
 	printf("server shutdown\n");
@@ -42,10 +36,8 @@ int main()
 {
 	int reuse,fde,fdc, sock, i, mem, dbmem, fdal,fdl;
 	struct sockaddr_in servaddr;
-	//pid_t pid[MAX_PROLE_NUM];
 	sem_t *semaphore;
 	struct Config *cfg;
-	//sqlite3 *db;
 
 
 	if ((fde = open("error.log", O_CREAT | O_TRUNC | O_WRONLY, 0666)) == -1) {
