@@ -1,5 +1,5 @@
 #include <sqlite3.h>
-#ifndef DB_H                         //Include Guards: to avoid multiple header inclusions (having so functions defined multiple times) -Include Guards per evitare di includere più volte l'header (ed avere quindi funzioni definite più volte)7
+#ifndef DB_H                         //Include Guards: to avoid multiple header inclusions (having so functions defined multiple times) -Include Guards per evitare di includere più volte l'header (ed avere quindi funzioni definite più volte)
 #define DB_H
 
 struct Record{

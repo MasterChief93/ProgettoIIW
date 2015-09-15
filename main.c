@@ -171,7 +171,7 @@ int main()
 		return (EXIT_FAILURE);
 	}
 
-	int fdlock = open("lock",O_RDWR);
+	int fdlock = open("lock",O_CREAT | O_RDWR, 0666);
 	if (fdlock == -1) {
 		perror("open");
 		return EXIT_FAILURE;

@@ -38,7 +38,7 @@ int shutdown_sequence(int connsd) {
 	return EXIT_SUCCESS;
 }
 
-int Thread_Work(int connsd, int fdl, char *orig, char *modif)
+int Thread_Work(int connsd, int fdl, char *orig, char *modif, int test)
 {
 	/*READING SEQUENCE BEGIN*/
 	sqlite3 *db;
@@ -224,13 +224,14 @@ int Thread_Work(int connsd, int fdl, char *orig, char *modif)
 				return EXIT_FAILURE;
 			}
 		}
-		
+
+	
 		/* The resource requested with the GET or HEAD method can be of different type, so:
 		*  1. /favicon.ico is requested
 		*  2. The root ("/") is requested
 		*  3. A generic resource is requested
 		*/
-
+		
 		//There is no favicon, so if the request is a GET of a favicon it will be ignored
 		//if (strcmp(resource,"/favicon.ico") == 0) return shutdown_sequence(connsd);
 
@@ -251,100 +252,108 @@ int Thread_Work(int connsd, int fdl, char *orig, char *modif)
 
 		// in case of a specific resource request
 		} else { 
-			
-			char path[256];	  //It will contains the path of the original image 
-		
-			sprintf(path,"%s%s",orig,resource);			// adding the dot in order to use fopen
-			
-			//We need to control if the original image is on the database 
-			//There must be no discrepancy between the db and the file on the disk!
-			int ispresent = dbcontrol(db,resource,1);
-
-			if (ispresent == 0) { 					// if the image is not in the database 
-				image = open("404.html",O_RDWR);		// 404 error page will be returned
-				type = "text/html";
-				flag = 1;							
-				if (image == -1) {  				// If the opening of the 404.html page fails everything will be close
-					perror("open");
-					while (sqlite3_close(db) != SQLITE_OK);
-					shutdown_sequence(connsd);
-					return EXIT_FAILURE;
+			if (test == 1) {
+				char name[strlen(resource) + 2];
+				sprintf(name,"./orig/%s",resource);
+				type = "image/jpeg";
+				if ((image = open(name,O_RDWR)) == -1) {
+					image = open("404.html",O_RDWR);		// 404 error page will be returned
+					type = "text/html";
 				}
-
-			// if the image is one the database instead
-			} else {                            	
-
-				char resolution[128]; //It will contains the resolution of the client in the form of "decimal SPACE decimal"
-				int width;
-				int height;
+			} else {
+				char path[256];	  //It will contains the path of the original image 
+			
+				sprintf(path,"%s%s",orig,resource);			// adding the dot in order to use fopen
 				
-				//if no quality value has been found I will gather the resolution informations
-				if (quality == 0) {
+				//We need to control if the original image is on the database 
+				//There must be no discrepancy between the db and the file on the disk!
+				int ispresent = dbcontrol(db,resource,1);
 
-					//The result of dbfindUA will be copied in resolution if the user-agent is already on the db
-					strcpy(resolution,dbfindUA(db,user_agent));   
-
-					printf("resolution = %s\n",resolution);
-					fflush(stdout);
-					//If resolution has not be filled by dbfindUA so there is not an entry in the db
-					if (strcmp(resolution,"NULL") == 0) {
-						//libwurfl is called and the useragent with the resolution will be added on the db
-						wurfl_interrogation(user_agent, resolution);
-						dbaddUA(db,user_agent,resolution);
+				if (ispresent == 0) { 					// if the image is not in the database 
+					image = open("404.html",O_RDWR);		// 404 error page will be returned
+					type = "text/html";
+					flag = 1;							
+					if (image == -1) {  				// If the opening of the 404.html page fails everything will be close
+						perror("open");
+						while (sqlite3_close(db) != SQLITE_OK);
+						shutdown_sequence(connsd);
+						return EXIT_FAILURE;
 					}
-				
-					// CONTROLLO SE GIA ESISTE A QUELLA RISOLUZIONE con dbcheck (Se non c'è la inserisce da solo) 0 se non c'è (modifico con image magick) o 1 se c'è (e vado diretto al percorso delle pagine)
-					//From resolution width and height will be parsed and stored in two different integer variables
+
+				// if the image is one the database instead
+				} else {                            	
+
+					char resolution[128]; //It will contains the resolution of the client in the form of "decimal SPACE decimal"
+					int width;
+					int height;
 					
-					sscanf(resolution,"%d %d ",&width,&height);
-				}
+					//if no quality value has been found I will gather the resolution informations
+					if (quality == 0) {
 
+						//The result of dbfindUA will be copied in resolution if the user-agent is already on the db
+						strcpy(resolution,dbfindUA(db,user_agent));   
 
-				char *n_image;
-				char *ext;
-	
-				char *saveptr4;
-				n_image = strtok_r(resource,".",&saveptr4);				//n_image will contains just the name of the image
-				ext = strtok_r(NULL,".",&saveptr4);						//ext the extension
-
-				//Si potrebbero invertire le malloc dato che new_path comprende new_image_name
-				char new_path[strlen(modif)+strlen(n_image)+14];
-				
-				char new_image_name[strlen(n_image)+14];
-
-				//The name of the modified image will be different if the quality is specified
-				if (quality == 0) {
-					sprintf(new_image_name,"%s_%d_%d.%s",n_image,width,height,ext);    //new_image_name will contain the complete name of the resized image
-					sprintf(new_path,"%s%s",modif,new_image_name);					   //new_path will be the relative path of the modified image
-				} else {
-					sprintf(new_image_name,"%s_%.2f.%s",n_image,quality,ext);    //new_image_name will contain the complete name of the resized image
-					sprintf(new_path,"%s%s",modif,new_image_name);
-				}
-				
-				
-				while (image == -1) {
-					//dbcheck will control if an entry of the resized image already exists
-					int ischeck = dbcheck(db,new_image_name,resource);
-					//if the image is not on the db
-					if (ischeck == 0) {
-						resizing(path,new_path,width,height,quality);	//I resize it with the new width and height or the quality specified
+						printf("resolution = %s\n",resolution);
+						fflush(stdout);
+						//If resolution has not be filled by dbfindUA so there is not an entry in the db
+						if (strcmp(resolution,"NULL") == 0) {
+							//libwurfl is called and the useragent with the resolution will be added on the db
+							wurfl_interrogation(user_agent, resolution);
+							dbaddUA(db,user_agent,resolution);
+						}
+					
+						// CONTROLLO SE GIA ESISTE A QUELLA RISOLUZIONE con dbcheck (Se non c'è la inserisce da solo) 0 se non c'è (modifico con image magick) o 1 se c'è (e vado diretto al percorso delle pagine)
+						//From resolution width and height will be parsed and stored in two different integer variables
+						
+						sscanf(resolution,"%d %d ",&width,&height);
 					}
 
-					image = open(new_path,O_RDWR);
-					type = "image/jpeg";
 
-					// but if it is not on the disk
-					if (image == -1) {	
-						dbremove(db,new_image_name,0);	// I remove the image entry from the db to prevent other discrepancy
-						continue;
+					char *n_image;
+					char *ext;
+		
+					char *saveptr4;
+					n_image = strtok_r(resource,".",&saveptr4);				//n_image will contains just the name of the image
+					ext = strtok_r(NULL,".",&saveptr4);						//ext the extension
+
+					//Si potrebbero invertire le malloc dato che new_path comprende new_image_name
+					char new_path[strlen(modif)+strlen(n_image)+14];
+					
+					char new_image_name[strlen(n_image)+14];
+
+					//The name of the modified image will be different if the quality is specified
+					if (quality == 0) {
+						sprintf(new_image_name,"%s_%d_%d.%s",n_image,width,height,ext);    //new_image_name will contain the complete name of the resized image
+						sprintf(new_path,"%s%s",modif,new_image_name);					   //new_path will be the relative path of the modified image
+					} else {
+						sprintf(new_image_name,"%s_%.2f.%s",n_image,quality,ext);    //new_image_name will contain the complete name of the resized image
+						sprintf(new_path,"%s%s",modif,new_image_name);
+					}
+					
+					
+					while (image == -1) {
+						//dbcheck will control if an entry of the resized image already exists
+						int ischeck = dbcheck(db,new_image_name,resource);
+						//if the image is not on the db
+						if (ischeck == 0) {
+							resizing(path,new_path,width,height,quality);	//I resize it with the new width and height or the quality specified
+						}
+
+						image = open(new_path,O_RDWR);
+						type = "image/jpeg";
+
+						// but if it is not on the disk
+						if (image == -1) {	
+							dbremove(db,new_image_name,0);	// I remove the image entry from the db to prevent other discrepancy
+							continue;
+						}
 					}
 				}
-			}
-				//if the image is on the database and on the disk, go on
+			}//if the image is on the database and on the disk, go on			
 		}
 		
 
-		//Those struct and variable will be used to obtain the length of the image
+			//Those struct and variable will be used to obtain the length of the image
 		time_t t;
 		struct tm *tmp;
 		struct tm *result;
@@ -365,7 +374,6 @@ int Thread_Work(int connsd, int fdl, char *orig, char *modif)
 			shutdown_sequence(connsd);
 			return EXIT_FAILURE;
 		}
-
 		unsigned long fileLen;
 		struct stat fileStat;
 

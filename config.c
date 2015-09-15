@@ -21,6 +21,7 @@ int Set_Config_Default(int fdc, struct Config *cfg)  //Creates the config.ini fi
 		.Max_Error_Allowed = 5,
 		.Max_Cache_Size = 20,
 		.Garbage_Collection_Frequence = 120,
+		.Test_Flag = 0,
 		.Orig_Path = "./orig",               //Probabile errore         
 		.Modified_Path = "./modif"};
 		
@@ -91,6 +92,12 @@ int Set_Config_Default(int fdc, struct Config *cfg)  //Creates the config.ini fi
 	}
 	
 	if (fprintf(streamc, "%d Garbage_Collection_Frequence    //Time, in seconds, between two sweeps of the garbage collector\n", cfg->Garbage_Collection_Frequence )<0)
+	{
+		fprintf(stderr, "Error in writing default Config on file\n");
+		return EXIT_FAILURE;
+	}
+
+	if (fprintf(streamc, "%d Test_Flag    //Use 1 to enable static workload configuration\n", cfg->Test_Flag)<0)
 	{
 		fprintf(stderr, "Error in writing default Config on file\n");
 		return EXIT_FAILURE;
@@ -262,6 +269,23 @@ int Load_Config(int fdc, struct Config *cfg)  //Load in the program the values f
 	}
 	
 	if (fscanf(streamc, "%d", &(cfg->Garbage_Collection_Frequence))!=1)
+	{
+		fprintf(stderr, "Error in reading Config from file\n");
+		return EXIT_FAILURE;
+	}
+	
+	if (fgets(temp, 1024*sizeof(char), streamc)==NULL)
+	{
+		fprintf(stderr, "Error in reading Config from file\n");
+		return EXIT_FAILURE;
+	}
+	if (feof(streamc)!=0)
+	{
+		fprintf(stderr, "Error in reading Config from file: unexpected EOF\n");
+		return EXIT_FAILURE;
+	}
+
+	if (fscanf(streamc, "%d", &(cfg->Test_Flag))!=1)
 	{
 		fprintf(stderr, "Error in reading Config from file\n");
 		return EXIT_FAILURE;

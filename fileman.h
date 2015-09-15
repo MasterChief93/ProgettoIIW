@@ -1,4 +1,4 @@
-#ifndef FILEMAN_H                         //Include Guards per evitare di includere più volte l'header (ed avere quindi funzioni definite più volte)7
+#ifndef FILEMAN_H                         //Include Guards per evitare di includere più volte l'header (ed avere quindi funzioni definite più volte)
 #define FILEMAN_H
 
 struct Config{
@@ -10,6 +10,7 @@ struct Config{
 	int Max_Error_Allowed;            //Maximum number of ignorable errors - Massimo numero di errori ignorabili
 	int Max_Cache_Size;                //Maximum number of files that can be kept in the cache - Massimo numero di file che possono essere tenuti in cache
 	int Garbage_Collection_Frequence;  //Time, in seconds, between two sweeps of the garbage collector (cache) - Tempo, in secondi, tra due passate del Garbage Collector (cache)
+	int Test_Flag; 						//Use 1 to enable static workload configuration
 	char *Orig_Path;                  //Where are the original images - Dove sono le immagini originali
 	char *Modified_Path;              //Where are the modified images and html pages - Dove sono le pagine html e le immagini modificate
 };

@@ -27,6 +27,7 @@ struct thread_struct {
 	int fdl;                       //Logging file - File di logging
 	char *orig;
 	char *modif;
+	int test_flag;
 	int ctrl_flag;					//Thanks to this flag there will be a sort of order in the operations
 };
 
@@ -34,7 +35,7 @@ struct thread_struct {
 
 void *thread_work(void *arg) {
 	struct thread_struct *data = (struct thread_struct *) arg;
-	int connsd, fdl;
+	int connsd, fdl, test;
 	char *orig;
 	char *modif;
 
@@ -65,6 +66,7 @@ void *thread_work(void *arg) {
 				data->count -= 1;
 				fdl= data->fdl;
 				orig = data->orig;
+				test = data->test_flag;
 				modif = data->modif;
 				data->ctrl_flag = 0;
 				if (pthread_mutex_unlock(&mtx_struct) < 0) {
@@ -79,7 +81,7 @@ void *thread_work(void *arg) {
 			}
 		}
 		//Once the data has been read, the Thread_Work will start
-		Thread_Work(connsd, fdl, orig, modif);
+		Thread_Work(connsd, fdl, orig, modif, test);
 	
 		
 		if (pthread_mutex_lock(&mtx_struct) < 0) {
@@ -121,6 +123,7 @@ int Process_Work(int lsock, int fdlock, struct Config *cfg,  int fdl)
 	tss->fdl = fdl;
 	tss->orig = cfg->Orig_Path;
 	tss->modif = cfg->Modified_Path;
+	tss->test_flag = cfg->Test_Flag;
 	tss->ctrl_flag = 0;
 
 	for(i = 0; i < cfg->Min_Thread_Num; i++) {   //Prethreading - Prethreading
