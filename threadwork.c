@@ -15,7 +15,7 @@
 #include <time.h>
 #include <sys/sendfile.h>
 
-#include "threadwork.h"    //Nostro
+#include "threadwork.h"    
 #include "processwork.h"
 #include "db.h"
 #include "parsing.h"
@@ -154,7 +154,7 @@ int Thread_Work(int connsd, int fdl, char *orig, char *modif, int test)
 
 		method_name = strtok_r(request_line," ",&saveptr2); 				
 		resource = strtok_r(NULL," ",&saveptr2);  							//resource will have the resource file name - resource contiene il nome della risorsa
-		user_agent = strtok_r(NULL,"",&saveptr3);   						//it works...
+		user_agent = strtok_r(NULL,"",&saveptr3);   						
 		
 		char *accept_line;    //It will contain the whole accept line in the header
 		char *accept_intro;	  //It will contain the string "Accept:" in order to find the right line
@@ -179,19 +179,22 @@ int Thread_Work(int connsd, int fdl, char *orig, char *modif, int test)
 		char *temp;	   
 		float quality = 0;  //It will contain the float value of the quality or 0 if none is present
 
+		//If accept_intro is NULL this algorithm will be ignored
 		if (accept_intro != NULL) {
-			accept = strtok_r(NULL,"",&saveptr3);
+			accept = strtok_r(NULL,"",&saveptr3); 	//accept will contain the whole string 
 			if (accept != NULL) {
-				while ((results = strtok_r(accept,",",&saveptr4)) != NULL) {
-					if ((temp = strtok_r(results,";",&saveptr5)) != NULL) {
+				//result will contain the resources (e.g: "*/*" or "images/jpeg") and it will sometime contain the q=X value
+				while ((results = strtok_r(accept,",",&saveptr4)) != NULL) {	
+					if ((temp = strtok_r(results,";",&saveptr5)) != NULL) { //temp is the part before the semicolumn and the q=X value
 						if (strcmp(temp,"*/*") == 0 || strcmp(temp,"image/jpeg") == 0 || strcmp(temp,"image/*") == 0) {
-							value = strtok_r(NULL,";",&saveptr5); 
+							value = strtok_r(NULL,";",&saveptr5); //value will be the q=X string
 							break;
 						}
 					} else break;
 					accept = NULL;
 				}
 			} else break;
+			//If value has been gathered in the previous cycle then I will make it a float
 			if (value != NULL) {
 				if (strtok_r(value,"=",&saveptr6) != NULL) {
 					quality = strtof(strtok_r(NULL,"=",&saveptr6),NULL);
@@ -238,7 +241,7 @@ int Thread_Work(int connsd, int fdl, char *orig, char *modif, int test)
 		//If it is not the favicon
 		//These variables will be used in both cases
 
-		int image = -1;			//Will contain the HTML page or the image
+		int image = -1;				//Will contain the HTML page or the image
 		char *type = NULL;			//It will contain the type string that has to be part of HTTP Header
 		
 
@@ -302,7 +305,6 @@ int Thread_Work(int connsd, int fdl, char *orig, char *modif, int test)
 							dbaddUA(db,user_agent,resolution);
 						}
 					
-						// CONTROLLO SE GIA ESISTE A QUELLA RISOLUZIONE con dbcheck (Se non c'è la inserisce da solo) 0 se non c'è (modifico con image magick) o 1 se c'è (e vado diretto al percorso delle pagine)
 						//From resolution width and height will be parsed and stored in two different integer variables
 						
 						sscanf(resolution,"%d %d ",&width,&height);
@@ -316,7 +318,6 @@ int Thread_Work(int connsd, int fdl, char *orig, char *modif, int test)
 					n_image = strtok_r(resource,".",&saveptr4);				//n_image will contains just the name of the image
 					ext = strtok_r(NULL,".",&saveptr4);						//ext the extension
 
-					//Si potrebbero invertire le malloc dato che new_path comprende new_image_name
 					char new_path[strlen(modif)+strlen(n_image)+14];
 					
 					char new_image_name[strlen(n_image)+14];
@@ -353,7 +354,7 @@ int Thread_Work(int connsd, int fdl, char *orig, char *modif, int test)
 		}
 		
 
-			//Those struct and variable will be used to obtain the length of the image
+		//Those struct and variable will be used to obtain the length of the image
 		time_t t;
 		struct tm *tmp;
 		struct tm *result;
@@ -391,6 +392,7 @@ int Thread_Work(int connsd, int fdl, char *orig, char *modif, int test)
          	shutdown_sequence(connsd);
          	return EXIT_FAILURE;
         }
+
         //fileLen will contain the size of the image or the page on the disk
         fileLen = fileStat.st_size;
 
@@ -450,7 +452,7 @@ int Thread_Work(int connsd, int fdl, char *orig, char *modif, int test)
 			shutdown_sequence(connsd);
 			return EXIT_FAILURE;
 		}
-
+		//In order to write on the access log file
 		if (flag == 0) dprintf(fdl,"%s - - %s %s 200 %d\n",clientip,timestring,rline_copy,fileLen);
 		else dprintf(fdl,"%s - - %s %s 404 %d\n",clientip,timestring,rline_copy,fileLen);
 

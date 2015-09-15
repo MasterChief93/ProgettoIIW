@@ -11,8 +11,8 @@
 #include <arpa/inet.h>
 #include <semaphore.h>
 #include <sqlite3.h>
-#include <string.h>   	     //per memset
-#include "processwork.h"     //Nostro
+#include <string.h>   	     
+#include "processwork.h"     
 #include "threadwork.h"
 #include "fileman.h"
 #include "db.h"
@@ -25,9 +25,9 @@ struct thread_struct {
 	int conn_sd; 				   //Connection socket - Socket di connessione
 	int count;                     //Available thread counter - Contatore dei thread disponibili
 	int fdl;                       //Logging file - File di logging
-	char *orig;
-	char *modif;
-	int test_flag;
+	char *orig;						//String containing the relative path of the folder for the original images
+	char *modif;					//String containing the relative path of the folder for the modified images
+	int test_flag;					//Test flag for enabling or disabling the test mode
 	int ctrl_flag;					//Thanks to this flag there will be a sort of order in the operations
 };
 
@@ -143,7 +143,7 @@ int Process_Work(int lsock, int fdlock, struct Config *cfg,  int fdl)
 	}
 		
 	i=0;
-	client_len = sizeof(clientaddr);                                         //Esiste la possibilità (remota) che vada all'interno del while
+	client_len = sizeof(clientaddr);                                         
 	int value;
 	while (1==1)
 	{

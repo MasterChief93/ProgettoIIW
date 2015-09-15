@@ -17,7 +17,7 @@
 #include <semaphore.h>
 #include <sqlite3.h>
 
-#include "processwork.h"     //Nostro
+#include "processwork.h"    
 #include "threadwork.h"
 #include "fileman.h"
 #include "db.h"
@@ -209,7 +209,7 @@ int main()
 					perror("Error in fork");
 					exit(EXIT_FAILURE);
 				case 0:
-					Process_Work(sock,fdlock, cfg, fdal);//, db);
+					Process_Work(sock,fdlock, cfg, fdal);
 				default:
 					continue;
 			}
