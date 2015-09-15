@@ -28,8 +28,6 @@ int shutdown_sequence(int connsd) {
 
 	if (shutdown(connsd,SHUT_RDWR) < 0) {
 		perror("shutdown");
-		printf("C'è stato un errore con il file descriptor %d e thread %lld e del processo %lld\n",connsd,pthread_self(),getpid());
-		fflush(stdout);
 		return EXIT_FAILURE;
 	}
 
@@ -37,8 +35,6 @@ int shutdown_sequence(int connsd) {
 		perror("close");
 		return EXIT_FAILURE;
 	}
-	printf("Ho chiuso la connessione file descriptor %d e thread %lld e del processo %lld\n",connsd,pthread_self(),getpid());
-	fflush(stdout);
 	return EXIT_SUCCESS;
 }
 
@@ -76,9 +72,6 @@ int Thread_Work(int connsd, int fdl, char *orig, char *modif)
 
 		nleft = BUFF_SIZE;
 
-	    printf("sto servendo io: %lld sul file descriptor %d\n",pthread_self(),connsd);
-	    fflush(stdout);
-
 		while(nleft > 0) {
 			if ((readn = recv(connsd, ptr, nleft, 0)) > 0) { 
 				nleft -= readn;
@@ -109,8 +102,13 @@ int Thread_Work(int connsd, int fdl, char *orig, char *modif)
 		char *saveptr;  
 		char *saveptr2;    			//They are useful for the strtok_r (thread-safe strtok)
 		char *saveptr3;
+		char *saveptr4;
+		char *saveptr5;
+		char *saveptr6;
+
 		char *request_line;			//It will contain the "GET / HTTP/1.1" string
 		char *user_agent_line;		//It will contain the whole "User Agent" line in the header
+		
 		char *user_agent_intro;		//It will contain "User Agent: " string in order to find the right line in the header
 		char *user_agent;			//It will contain the User Agent string that we need
 		char rline_copy[100];			//It will contain the request line previously obtained in order to use it inside the log
@@ -118,14 +116,12 @@ int Thread_Work(int connsd, int fdl, char *orig, char *modif)
 		char *method_name;			//GET, HEAD, etc.
 		char *resource;				//The resource requested ("/","/favicon.ico",etc.)
 		
-		printf("%s",buff);
-		fflush(stdout);
-
-		char buff_copy[strlen(buff)];
+		char buff_copy[strlen(buff)];  //It will contain the copy of the buff, so we can use it to obtain the Accept header line (if exists)
 		strcpy(buff_copy,buff);
 
 		request_line = strtok_r(buff,"\r\n",&saveptr);
 		strcpy(rline_copy,request_line);
+
 		//The buff could be shortest than usual so the request_line couldn't even exists
 		if (request_line == NULL) {
 			perror("Not valid request");
@@ -147,31 +143,30 @@ int Thread_Work(int connsd, int fdl, char *orig, char *modif)
 		resource = strtok_r(NULL," ",&saveptr2);  							//resource will have the resource file name - resource contiene il nome della risorsa
 		user_agent = strtok_r(NULL,"",&saveptr3);   						//it works...
 		
-		char *accept_line;
-		char *accept_intro;
-		char *accept;
+		char *accept_line;    //It will contain the whole accept line in the header
+		char *accept_intro;	  //It will contain the string "Accept:" in order to find the right line
+		char *accept;		  //It will contain the value of the Accept line
 		
+
+		//I'll cicle through the line of the header until the Accept line
 		strtok_r(buff_copy,"\r\n",&saveptr);
 		for (i = 0; i < 10; i++) {
-			if ((accept_line = strtok_r(NULL,"\r\n",&saveptr)) != NULL) {
-				if ((accept_intro = strtok_r(accept_line," ",&saveptr3)) != NULL) {
-					if (strcmp(accept_intro,"Accept:") == 0) break;
-				}
+			accept_line = strtok_r(NULL,"\r\n",&saveptr);
+			accept_intro = strtok_r(accept_line," ",&saveptr3);
+			if (accept_intro != NULL) {
+				if (strcmp(accept_intro,"Accept:") == 0) break;
 			}
 		}
 
-		char *saveptr4;
-		char *results;
-		char *saveptr5;
-		char *saveptr6;
-		char *value;
-		char *temp;
-		float quality = 0;
+		
+		char *results; //Will be used to contain the resources specified inside the Accept line
+		char *value;   //It will contain the specified quality (E.g. "q=0.9")
+		char *temp;	   
+		float quality = 0;  //It will contain the float value of the quality or 0 if none is present
 
-		if ((accept = strtok_r(NULL,"",&saveptr3)) != NULL) {
+		if (accept_intro != NULL) {
+			accept = strtok_r(NULL,"",&saveptr3);
 			while ((results = strtok_r(accept,",",&saveptr4)) != NULL) {
-				printf("result = %s\n",results);
-				fflush(stdout);
 				if ((temp = strtok_r(results,";",&saveptr5)) != NULL) {
 					if (strcmp(temp,"*/*") == 0 || strcmp(temp,"image/jpeg") == 0 || strcmp(temp,"image/*") == 0) {
 						value = strtok_r(NULL,";",&saveptr5); 
@@ -184,6 +179,7 @@ int Thread_Work(int connsd, int fdl, char *orig, char *modif)
 				quality = strtof(strtok_r(NULL,"=",&saveptr6),NULL);
 			}
 		}
+
 
 
 		/*INFORMATION GATHERING END*/
@@ -237,7 +233,6 @@ int Thread_Work(int connsd, int fdl, char *orig, char *modif)
 		// in case of a specific resource request
 		} else { 
 			
-			//TODO il path immagine totale includerà il "punto (.)" iniziale, la cartella prelevata dal config e il nome dell'immagine specificato nella richiesta HTTP
 			char path[256];	  //It will contains the path of the original image 
 		
 			sprintf(path,"%s%s",orig,resource);			// adding the dot in order to use fopen
@@ -259,11 +254,15 @@ int Thread_Work(int connsd, int fdl, char *orig, char *modif)
 
 			// if the image is one the database instead
 			} else {                            	
+
 				char resolution[128]; //It will contains the resolution of the client in the form of "decimal SPACE decimal"
 				int width;
 				int height;
-				//The result of dbfindUA will be copied in resolution if the user-agent is already on the db
+				
+				//if no quality value has been found I will gather the resolution informations
 				if (quality == 0) {
+
+					//The result of dbfindUA will be copied in resolution if the user-agent is already on the db
 					strcpy(resolution,dbfindUA(db,user_agent));   
 
 					printf("resolution = %s\n",resolution);
@@ -293,6 +292,8 @@ int Thread_Work(int connsd, int fdl, char *orig, char *modif)
 				char new_path[strlen(modif)+strlen(n_image)+14];
 				
 				char new_image_name[strlen(n_image)+14];
+
+				//The name of the modified image will be different if the quality is specified
 				if (quality == 0) {
 					sprintf(new_image_name,"%s_%d_%d.%s",n_image,width,height,ext);    //new_image_name will contain the complete name of the resized image
 					sprintf(new_path,"%s%s",modif,new_image_name);					   //new_path will be the relative path of the modified image
@@ -307,7 +308,7 @@ int Thread_Work(int connsd, int fdl, char *orig, char *modif)
 					int ischeck = dbcheck(db,new_image_name,resource);
 					//if the image is not on the db
 					if (ischeck == 0) {
-						resizing(path,new_path,width,height,quality);	//I resize it with the new width and height
+						resizing(path,new_path,width,height,quality);	//I resize it with the new width and height or the quality specified
 					}
 
 					image = open(new_path,O_RDWR);
@@ -363,7 +364,7 @@ int Thread_Work(int connsd, int fdl, char *orig, char *modif)
          	shutdown_sequence(connsd);
          	return EXIT_FAILURE;
         }
-
+        //fileLen will contain the size of the image or the page on the disk
         fileLen = fileStat.st_size;
 
 		if (flock(image,LOCK_UN) == -1) {
@@ -383,8 +384,6 @@ int Thread_Work(int connsd, int fdl, char *orig, char *modif)
 		} else {
 			resp_length = sprintf(response,"HTTP/1.1 404 Not Found\r\nContent-Type: %s\r\nContent-Length: %d\r\nKeep-Alive: timeout=10\r\n,Connection: Keep-Alive\r\n\r\n",type,fileLen);
 		}
-		printf("resp_length = %ld\n",resp_length);
-		fflush(stdout);
 				
 
 		int optval;
@@ -411,8 +410,6 @@ int Thread_Work(int connsd, int fdl, char *orig, char *modif)
 			shutdown_sequence(connsd);
 			return EXIT_FAILURE;
 		}
-		printf("%d\n",numsend);
-		fflush(stdout);
 		close(image);
 		
 
@@ -435,9 +432,7 @@ int Thread_Work(int connsd, int fdl, char *orig, char *modif)
 			sqlite3_close(db);
 			shutdown_sequence(connsd);
 			return EXIT_FAILURE;
-		}		
-		printf("Ho finito. Il mio file descritor era: %d e ricomincio %lld\n",connsd,pthread_self());
-		fflush(stdout);	
+		}
 	}	
 }
 

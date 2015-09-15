@@ -39,13 +39,13 @@ int main()
 	sem_t *semaphore;
 	struct Config *cfg;
 
-
+	//Opening of the error.log file
 	if ((fde = open("error.log", O_CREAT | O_TRUNC | O_WRONLY, 0666)) == -1) {
 		perror("Error in opening error.log");
 		return (EXIT_FAILURE);
 	}
 	
-
+	//The stderr will be redirected onto the error.log file
 	if (dup2(fde, STDERR_FILENO) == -1) {
 		perror("Error in opening error.log");
 		return (EXIT_FAILURE);
@@ -55,7 +55,8 @@ int main()
 		perror("Error in closing error.log");
 		return (EXIT_FAILURE);
 	}
-		
+
+	//Shared memory area creation for the configuration file
 	if ((mem = shmget(IPC_PRIVATE, sizeof(struct Config), O_CREAT|0666)) == -1)
 	{
 		perror("Error in shmget");
@@ -88,8 +89,12 @@ int main()
 		}                                          
 	}
 	
+	//The menu will start here and the father will wait for a specific value in order to continue with the execution
 	while (start_menu(cfg) != 2523);
-	page_generator();
+
+	//The html page of default will be generated
+	page_generator(cfg);
+
 	//Create_access_log_file;
 	if ((fdal = open("access.log", O_CREAT | O_EXCL | O_APPEND | O_RDWR, 0666)) == -1) {  // Create access.log, unless it already exists - Crea log.log, a meno che già non esista
 		if ((fdal = open("access.log", O_APPEND | O_RDWR)) == -1) {                      // If access.log already exists, open it - Se log.log già esiste, aprilo
@@ -112,7 +117,7 @@ int main()
 					perror("Error in fork");
 					exit(EXIT_FAILURE);
 				case 0:
-					Garbage_Collector(/*db,*/ cfg, fdl);
+					Garbage_Collector(cfg, fdl);
 			}           
 			
 
@@ -126,6 +131,7 @@ int main()
 		perror("Error in memset");
 		return (EXIT_FAILURE);
 	}
+	
 	servaddr.sin_family=AF_INET;
 	servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
 	servaddr.sin_port=htons(cfg->Serv_Port);
@@ -135,6 +141,7 @@ int main()
 		exit(EXIT_FAILURE);
 	}
 
+	//timeout setting
 	struct timeval timeout;      
     timeout.tv_sec = 10;
     timeout.tv_usec = 0;
@@ -144,7 +151,7 @@ int main()
 		exit(EXIT_FAILURE);
   	}
 
-
+  	//keepalive option setting
 	int optval = 1;
 	socklen_t optlen = sizeof(optval);
 	if(setsockopt(sock, SOL_SOCKET, SO_KEEPALIVE, &optval, optlen) < 0) {
@@ -173,7 +180,7 @@ int main()
 
 	for (i=1; i <= cfg->Max_Prole_Num; i++)        //Preforking - Preforking
 	{
-		switch (fork())    //Funziona?
+		switch (fork())    
 		{
 			case -1:
 				perror("Error in prefork");
@@ -181,12 +188,12 @@ int main()
 			case 0:
 				printf("Sono un figlio\n");
 				fflush(stdout);
-				Process_Work(sock, fdlock, cfg, fdal);//, db);  //Da aggiungere in un nostro header
+				Process_Work(sock, fdlock, cfg, fdal);  
 			default:
 				continue;
 		}
 	}
-	//int status; volendo si può aggiungere lo stato per un resoconto più preciso
+
 	if (  signal(SIGINT,  sighandler) == SIG_ERR ||         
           signal(SIGTERM, sighandler) == SIG_ERR ||          
           signal(SIGQUIT, sighandler) == SIG_ERR ) {        

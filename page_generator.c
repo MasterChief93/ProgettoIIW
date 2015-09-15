@@ -5,8 +5,9 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <string.h>
+#include "fileman.h"
 
-void page_generator() {
+void page_generator(struct Config *cfg) {
 	pid_t pid;
 	int pfd[2];
 
@@ -21,7 +22,6 @@ void page_generator() {
 		exit(EXIT_FAILURE);
 	}
 	else if (pid == 0) {
-		//char *cmd[] = {"/bin/ls", cfg->Orig_Path};
 		if (close(pfd[0]) == -1) {
 			printf("Error in close()\n");
 			exit(EXIT_FAILURE);
@@ -30,13 +30,12 @@ void page_generator() {
 			perror("Error in dup2()\n");
 			exit(EXIT_FAILURE);
 		}
-		//execve(cmd[0], cmd, environ);
-		if (system("/bin/ls ./orig") == -1) {
+		char instruction[strlen("/bin/ls") + strlen(cfg->Orig_Path)];
+		sprintf(instruction,"/bin/ls %s",cfg->Orig_Path);
+		if (system(instruction) == -1) {
 			perror("error in system()");
 			exit(EXIT_FAILURE);
 		}
-		//perror("Error in execve()\n");
-		//fflush(stdout);
 		exit(EXIT_SUCCESS);
 	}
 
