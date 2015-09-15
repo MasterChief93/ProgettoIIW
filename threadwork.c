@@ -150,12 +150,14 @@ int Thread_Work(int connsd, int fdl, char *orig, char *modif)
 
 		//I'll cicle through the line of the header until the Accept line
 		strtok_r(buff_copy,"\r\n",&saveptr);
-		for (i = 0; i < 10; i++) {
+		for (;;) {
 			accept_line = strtok_r(NULL,"\r\n",&saveptr);
-			accept_intro = strtok_r(accept_line," ",&saveptr3);
-			if (accept_intro != NULL) {
-				if (strcmp(accept_intro,"Accept:") == 0) break;
-			}
+			if (accept_line != NULL) {
+				accept_intro = strtok_r(accept_line," ",&saveptr3);
+				if (accept_intro != NULL) {
+					if (strcmp(accept_intro,"Accept:") == 0) break;
+				} else break;
+			} else break;
 		}
 
 		
@@ -166,17 +168,21 @@ int Thread_Work(int connsd, int fdl, char *orig, char *modif)
 
 		if (accept_intro != NULL) {
 			accept = strtok_r(NULL,"",&saveptr3);
-			while ((results = strtok_r(accept,",",&saveptr4)) != NULL) {
-				if ((temp = strtok_r(results,";",&saveptr5)) != NULL) {
-					if (strcmp(temp,"*/*") == 0 || strcmp(temp,"image/jpeg") == 0 || strcmp(temp,"image/*") == 0) {
-						value = strtok_r(NULL,";",&saveptr5); 
-						break;
-					}
+			if (accept != NULL) {
+				while ((results = strtok_r(accept,",",&saveptr4)) != NULL) {
+					if ((temp = strtok_r(results,";",&saveptr5)) != NULL) {
+						if (strcmp(temp,"*/*") == 0 || strcmp(temp,"image/jpeg") == 0 || strcmp(temp,"image/*") == 0) {
+							value = strtok_r(NULL,";",&saveptr5); 
+							break;
+						}
+					} else break;
+					accept = NULL;
 				}
-				accept = NULL;
-			}
-			if (strtok_r(value,"=",&saveptr6) != NULL) {
-				quality = strtof(strtok_r(NULL,"=",&saveptr6),NULL);
+			} else break;
+			if (value != NULL) {
+				if (strtok_r(value,"=",&saveptr6) != NULL) {
+					quality = strtof(strtok_r(NULL,"=",&saveptr6),NULL);
+				}
 			}
 		}
 
@@ -435,4 +441,3 @@ int Thread_Work(int connsd, int fdl, char *orig, char *modif)
 		}
 	}	
 }
-

@@ -80,12 +80,15 @@ void *thread_work(void *arg) {
 		}
 		//Once the data has been read, the Thread_Work will start
 		Thread_Work(connsd, fdl, orig, modif);
+	
 		
 		if (pthread_mutex_lock(&mtx_struct) < 0) {
 			perror("pthred_mutex_lock");
 			exit(EXIT_FAILURE);
 		}
+		
 		data->count += 1;		//available thread counter update
+		
 		if (pthread_mutex_unlock(&mtx_struct) < 0) {
 			perror("pthread_mutex_unlock");
 			exit(EXIT_FAILURE);
@@ -111,6 +114,7 @@ int Process_Work(int lsock, int fdlock, struct Config *cfg,  int fdl)
 	
 
 	errno=0;	
+
 	//struct initialization
 	tss->conn_sd = -1;
 	tss->count = cfg->Min_Thread_Num; 								
@@ -200,13 +204,14 @@ int Process_Work(int lsock, int fdlock, struct Config *cfg,  int fdl)
 		}
 
 		//countt contains the number of free threads (the -1 prevents the decreasing of the counter that will happen in the thread)		
-		if ((countt <= (int) (0.1*thread_num)) && (thread_num<cfg->Max_Thread_Num))       //If 90% of the threads are busy, and MAX_THREAD_NUMBER hasn't been reached, increase the pool - Se il 90% dei thread sono impegnati, e non si è arrivati a MAX_THREAD_NUM, incrementa il pool
+		if ((countt <= (int) (0.1*thread_num)) && (thread_num < cfg->Max_Thread_Num))       //If 90% of the threads are busy, and MAX_THREAD_NUMBER hasn't been reached, increase the pool - Se il 90% dei thread sono impegnati, e non si è arrivati a MAX_THREAD_NUM, incrementa il pool
 		{
 			if (pthread_mutex_lock(&mtx_struct) < 0) {
 				perror("pthread_mutex_lock");
 				
 				exit(EXIT_FAILURE);
 			}
+			perror("Faccio un incremento");
 			
 			for(i = 0; i <= cfg->Thread_Increment; i++) {
 				if (pthread_create(&tid,NULL,thread_work,tss) < 0) {

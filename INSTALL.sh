@@ -31,3 +31,4 @@ sudo ldconfig
 cd ..
 mkdir orig
 mkdir modif
+make
