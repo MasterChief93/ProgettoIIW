@@ -39,8 +39,6 @@ void *thread_work(void *arg) {
 	char *orig;
 	char *modif;
 
-	printf("Sono un thread!\n");
-	fflush(stdout);
 	while (1==1){
 		if (pthread_mutex_lock(&mtx_cond) < 0) {
 			perror("pthread_mutex_lock");

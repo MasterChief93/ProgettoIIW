@@ -73,8 +73,6 @@ int Thread_Work(int connsd, int fdl, char *orig, char *modif, int test)
 		nleft = BUFF_SIZE;
 
 		while(nleft > 0) {
-			printf("leggo\n");
-			fflush(stdout);
 			if ((readn = recv(connsd, ptr, nleft, 0)) > 0) { 
 				nleft -= readn;
 				ptr += readn;
