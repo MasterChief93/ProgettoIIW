@@ -73,6 +73,8 @@ int Thread_Work(int connsd, int fdl, char *orig, char *modif)
 		nleft = BUFF_SIZE;
 
 		while(nleft > 0) {
+			printf("leggo\n");
+			fflush(stdout);
 			if ((readn = recv(connsd, ptr, nleft, 0)) > 0) { 
 				nleft -= readn;
 				ptr += readn;
@@ -81,8 +83,13 @@ int Thread_Work(int connsd, int fdl, char *orig, char *modif)
 				} else  {
 					continue;
 				}
-			} else if (readn == 0 || errno != EINTR || readn == -1)  {
+			} else if (readn == 0) {
 				break;
+			} else if (errno != 0 || readn == -1) {
+				perror("buff empty or an error occurred");
+				while (sqlite3_close(db) != SQLITE_OK);
+				shutdown_sequence(connsd);
+				return EXIT_FAILURE;
 			}
 		}
 	
@@ -92,6 +99,7 @@ int Thread_Work(int connsd, int fdl, char *orig, char *modif)
 
 		//If really nothing has been read I shutdown the connect
 		if (strlen(buff) == 0) {
+			while (sqlite3_close(db) != SQLITE_OK);
 			shutdown_sequence(connsd);
 			return EXIT_FAILURE;
 		}
@@ -117,6 +125,7 @@ int Thread_Work(int connsd, int fdl, char *orig, char *modif)
 		char *resource;				//The resource requested ("/","/favicon.ico",etc.)
 		
 		char buff_copy[strlen(buff)];  //It will contain the copy of the buff, so we can use it to obtain the Accept header line (if exists)
+		memset(buff_copy,0,strlen(buff));
 		strcpy(buff_copy,buff);
 
 		request_line = strtok_r(buff,"\r\n",&saveptr);
@@ -126,17 +135,21 @@ int Thread_Work(int connsd, int fdl, char *orig, char *modif)
 		if (request_line == NULL) {
 			perror("Not valid request");
 			shutdown_sequence(connsd);
-			sqlite3_close(db);
+			while (sqlite3_close(db) != SQLITE_OK);
 			return EXIT_FAILURE;
 		}
 
 		int i;
 
 		//I'll cicle through the line of the header until the User-Agent line
-		for (i = 0; i < 5; i++) {
+		for (;;) {
 			user_agent_line = strtok_r(NULL,"\r\n",&saveptr);
-			user_agent_intro = strtok_r(user_agent_line," ",&saveptr3);
-			if (strcmp(user_agent_intro,"User-Agent:") == 0) break;
+			if (user_agent_line != NULL) {
+				user_agent_intro = strtok_r(user_agent_line," ",&saveptr3);
+				if (user_agent_intro != NULL) {
+					if (strcmp(user_agent_intro,"User-Agent:") == 0) break;
+				} else break;
+			} else break;
 		}
 
 		method_name = strtok_r(request_line," ",&saveptr2); 				
@@ -206,7 +219,7 @@ int Thread_Work(int connsd, int fdl, char *orig, char *modif)
 			writen = send(connsd,"HTTP/1.1 405 Method Not Allowed\r\n\r\n",strlen("HTTP/1.1 405 Method Not Allowed\r\n\r\n"),0);
 			if (writen == 0) {
 				perror("write");
-				sqlite3_close(db);
+				while (sqlite3_close(db) != SQLITE_OK);
 				shutdown_sequence(connsd);
 				return EXIT_FAILURE;
 			}
@@ -253,7 +266,7 @@ int Thread_Work(int connsd, int fdl, char *orig, char *modif)
 				flag = 1;							
 				if (image == -1) {  				// If the opening of the 404.html page fails everything will be close
 					perror("open");
-					sqlite3_close(db);
+					while (sqlite3_close(db) != SQLITE_OK);
 					shutdown_sequence(connsd);
 					return EXIT_FAILURE;
 				}
@@ -340,7 +353,7 @@ int Thread_Work(int connsd, int fdl, char *orig, char *modif)
 		tmp = localtime_r(&t,&result);
 		if (tmp == NULL) {
    			perror("localtime");
-   			sqlite3_close(db);
+   			while (sqlite3_close(db) != SQLITE_OK);
    			shutdown_sequence(connsd);
 			return EXIT_FAILURE;
 		}
@@ -348,7 +361,7 @@ int Thread_Work(int connsd, int fdl, char *orig, char *modif)
 		char timestring[30];
 		if (strftime(timestring,sizeof(timestring),"%d/%b/%Y:%H:%M:%S %z",tmp) == 0) {
 			perror("strftime");
-			sqlite3_close(db);
+			while (sqlite3_close(db) != SQLITE_OK);
 			shutdown_sequence(connsd);
 			return EXIT_FAILURE;
 		}
@@ -359,14 +372,14 @@ int Thread_Work(int connsd, int fdl, char *orig, char *modif)
 
 		if (flock(image,LOCK_EX) == -1) {
 		 	perror("lock image lock");
-		 	sqlite3_close(db);
+		 	while (sqlite3_close(db) != SQLITE_OK);
 		 	shutdown_sequence(connsd);
 		 	return EXIT_FAILURE;
 		}
 
 		if(fstat(image,&fileStat) < 0) {
          	perror("fstat image");
-         	sqlite3_close(db);
+         	while (sqlite3_close(db) != SQLITE_OK);
          	shutdown_sequence(connsd);
          	return EXIT_FAILURE;
         }
@@ -375,7 +388,7 @@ int Thread_Work(int connsd, int fdl, char *orig, char *modif)
 
 		if (flock(image,LOCK_UN) == -1) {
 		 	perror("lock image unlock");
-		 	sqlite3_close(db);
+		 	while (sqlite3_close(db) != SQLITE_OK);
 		 	shutdown_sequence(connsd);
 		 	return EXIT_FAILURE;
 		}
@@ -425,7 +438,7 @@ int Thread_Work(int connsd, int fdl, char *orig, char *modif)
 
 		if (lockf(fdl, F_LOCK,0) == -1) {
 			perror("lockf fdl");
-			sqlite3_close(db);
+			while (sqlite3_close(db) != SQLITE_OK);
 			shutdown_sequence(connsd);
 			return EXIT_FAILURE;
 		}
@@ -435,7 +448,7 @@ int Thread_Work(int connsd, int fdl, char *orig, char *modif)
 
 		if (lockf(fdl, F_ULOCK,0) == -1) {
 			perror("lockf fdl");
-			sqlite3_close(db);
+			while (sqlite3_close(db) != SQLITE_OK);
 			shutdown_sequence(connsd);
 			return EXIT_FAILURE;
 		}

@@ -112,13 +112,13 @@ int main()
 	}
 
 	switch (fork())                                                    //Creates a Process to keep under control the size of the cache - Crea un processo per mantenere sotto controllo la grandezza della cache
-			{
-				case -1:
-					perror("Error in fork");
-					exit(EXIT_FAILURE);
-				case 0:
-					Garbage_Collector(cfg, fdl);
-			}           
+	{
+		case -1:
+			perror("Error in fork");
+			exit(EXIT_FAILURE);
+		case 0:
+			Garbage_Collector(cfg, fdl);
+	}           
 			
 
 	if ((sock = socket(AF_INET, SOCK_STREAM, 0)) <0) {  
