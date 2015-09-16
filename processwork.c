@@ -154,7 +154,13 @@ int Process_Work(int lsock, int fdlock, struct Config *cfg,  int fdl)
 		{
 			perror("Error in accept");
 			error+=1;
-			if (errno != EAGAIN && error <= cfg->Max_Error_Allowed) continue;                    //Try to ignore the error - Prova ad ignorare l'errore
+			if (errno != EAGAIN && error <= cfg->Max_Error_Allowed) {
+				if (lockf(fdlock, F_ULOCK,0) == -1) {						  //If the number is reach, the process will be terminate
+					perror("lockf");
+					exit(EXIT_FAILURE);
+				}
+				continue;                    //Try to ignore the error - Prova ad ignorare l'errore
+			}
 			 else {															  //The accept will be retried for Max_Error_Allowed number of times
 			 	if (lockf(fdlock, F_ULOCK,0) == -1) {						  //If the number is reach, the process will be terminate
 					perror("lockf");

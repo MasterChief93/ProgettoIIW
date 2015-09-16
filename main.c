@@ -186,8 +186,6 @@ int main()
 				perror("Error in prefork");
 				exit(EXIT_FAILURE);
 			case 0:
-				printf("Sono un figlio\n");
-				fflush(stdout);
 				Process_Work(sock, fdlock, cfg, fdal);  
 			default:
 				continue;
