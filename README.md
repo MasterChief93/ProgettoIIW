@@ -1,4 +1,4 @@
-**A simple multi-process multi-threaded Web Server**
+#A simple multi-process multi-threaded Web Server
 *meant to deliver adapted static contents according device User Agent*
 
 Preliminar instruction:
