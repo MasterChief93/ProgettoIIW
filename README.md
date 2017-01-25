@@ -1,3 +1,6 @@
+**A simple multi-process multi-threaded Web Server**
+*meant to deliver adapted static contents according device User Agent*
+
 Preliminar instruction:
 These 3 folders need to be present inside the main folder of the projectt in order to compile correctly the libwurfl library:
 - apr-1.5.2 (folder obtained by extracting the file downloadable here: http://apache.panu.it//apr/apr-1.5.2.tar.gz
